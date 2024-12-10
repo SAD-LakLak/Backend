@@ -7,5 +7,5 @@ from core.views import EmailTokenObtainPairView
 
 urlpatterns = [
     path('sign-in/', EmailTokenObtainPairView.as_view(), name='token_obtain_pair'),
-
+    
 ]
