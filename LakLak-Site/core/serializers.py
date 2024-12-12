@@ -3,14 +3,14 @@ from rest_framework import serializers
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = get_user_model()
-        fields = ['id', 'username', 'email']
+        model = get_user_model()  # Using the custom user model
+        fields = ['id', 'username', 'email', 'password']
+        extra_kwargs = {
+            'password': {'write_only': True}  # Ensure the password is write-only
+        }
 
-class RegisterSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = get_user_model()
-        fields = ['username', 'email', 'password']
-    
     def create(self, validated_data):
-        user = get_user_model().objects.create_user(**validated_data)
+        user = get_user_model().objects.create_user(
+            **validated_data
+        )
         return user
