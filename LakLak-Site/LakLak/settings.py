@@ -160,9 +160,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'fa-ir'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Iran'
 
 USE_I18N = True
 
@@ -190,7 +190,7 @@ EMAIL_FROM_ADDRESS = 'info@laklakbox.ir'
 EMAIL_RECOVERY_TEMPLATE = """\
 Dear {name},
 You are receiving this email because a password reset request was just initiated for your account.
-If this request was from you, head on to the below link to reset your password:
+If this request was sent from you, head on to the below link to reset your password:
 
 {reset_link}
 
@@ -199,3 +199,4 @@ If it wasn't you, simply ignore this message.
 Bests,
 The LakLak Team.
 """
+EMAIL_REQUEST_TTL = 20  # Duration in which the reset link is valid (in minutes).

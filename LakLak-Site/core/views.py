@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils.crypto import get_random_string
+from django.urls import reverse
 
 from rest_framework import generics
 from rest_framework.response import Response
@@ -21,43 +22,49 @@ def send_password_recovery_email(request):
     try:
         user = get_user_model().objects.get(email=email_address)
     except:
-        return Response({"message":"No user found with this email"},status=status.HTTP_406_NOT_ACCEPTABLE)
+        return Response({"success" : "false", "message":"No user found with this email"},status=status.HTTP_406_NOT_ACCEPTABLE)
     
+    # Delete any remained reset requests for this user from past, if any
+    PasswordRecoveryRequest.objects.filter(user=user).delete()
+
     try:
         new_recovery_request = PasswordRecoveryRequest.objects.create(user=user, token=get_random_string(64))
-        content = settings.EMAIL_RECOVERY_TEMPLAYE.format(name=user.first_name, reset_link=new_recovery_request.token)
+        content = settings.EMAIL_RECOVERY_TEMPLATE.format(
+            name=user.username,
+            reset_link=reverse('core:reset_with_token', args=(new_recovery_request.token,))
+        )
         send_mail('LakLak: Password Reset Request',
                   content,
-                  settings.EMAIL_HOST_USER,
+                  settings.EMAIL_FROM_ADDRESS,
                   [email_address],
                   fail_silently=False,
         )
     except Exception as e:
-        return Response({"error-message" : str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"success" : "false", "message" : str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response(
-        {"message" : "Password reset email sent successfully. Check you spam folder if it does not appear in several minutes."},
+        {"success" : "True"},
           status=status.HTTP_200_OK
           )
 
 @api_view(['GET', 'POST'])
 def reset_password_based_on_token(request, token):
+    try:
+        reset_request = PasswordRecoveryRequest.objects.get(token=token)
+        if reset_request.has_expired():
+            reset_request.delete()
+            raise Exception("Expired Token")
+    except:
+        return Response({"tokenValidity" : "False"}, status=status.HTTP_400_BAD_REQUEST)
     if request.method == 'GET':
-        try:
-            reset_request = PasswordRecoveryRequest.objects.get(token=token)
-        except:
-            return Response({"tokenValidity" : "False"}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"tokenValidity" : "True", "resetToken" : reset_request.token})
     elif request.method == 'POST':
         try:
-            reset_request = PasswordRecoveryRequest.objects.get(token=request.POST['resetToken'])
-        except:
-            return Response({"tokenValidity" : "False"}, status=status.HTTP_400_BAD_REQUEST)
-        try:
             user = reset_request.user
-            # TODO (optional) : Additional check for validity of the new password (eg its length)
-            
+            # TODO (optional) : Additional check for validity of the new password (eg its length)            
             user.set_password(request.POST['newPassword'])
+            user.save()
+            reset_request.delete()
             return Response({"success" : "True"})
         except:
             return Response({"success" : "False"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
