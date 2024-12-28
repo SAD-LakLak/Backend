@@ -1,24 +1,21 @@
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, logout
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils.crypto import get_random_string
 from django.urls import reverse
 
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework import status
 from rest_framework.decorators import api_view
+from rest_framework.views import APIView
 
 from core.serializers import UserSerializer
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from django.contrib.auth import logout
 from .models import PasswordRecoveryRequest
 
 class UserCreateAPIView(generics.CreateAPIView):
     queryset = get_user_model().objects.all()
     serializer_class = UserSerializer
+
 
 @api_view(['POST'])
 def send_password_recovery_email(request):
@@ -50,6 +47,7 @@ def send_password_recovery_email(request):
         {"success" : "True"},
           status=status.HTTP_200_OK
           )
+
 
 @api_view(['GET', 'POST'])
 def reset_password_based_on_token(request, token):
