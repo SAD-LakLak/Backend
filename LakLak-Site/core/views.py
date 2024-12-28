@@ -24,13 +24,14 @@ def send_password_recovery_email(request):
         return Response({"message":"No user found with this email"},status=status.HTTP_406_NOT_ACCEPTABLE)
     
     try:
+        new_recovery_request = PasswordRecoveryRequest.objects.create(user=user, token=get_random_string(64))
+        content = settings.EMAIL_RECOVERY_TEMPLAYE.format(name=user.first_name, reset_link=new_recovery_request.token)
         send_mail('LakLak: Password Reset Request',
-                  f"Dear {user.first_name},\nWe are sending this email in response to a password reset request just received for your account.",
+                  content,
                   settings.EMAIL_HOST_USER,
                   [email_address],
                   fail_silently=False,
         )
-        # TODO : obtain the infrastructure needed for the above method call to operate properly.
     except Exception as e:
         return Response({"error-message" : str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -55,6 +56,7 @@ def reset_password_based_on_token(request, token):
         try:
             user = reset_request.user
             # TODO (optional) : Additional check for validity of the new password (eg its length)
+            
             user.set_password(request.POST['newPassword'])
             return Response({"success" : "True"})
         except:

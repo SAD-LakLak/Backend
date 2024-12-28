@@ -181,8 +181,21 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email server configurations
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST = 'smtp.c1.liara.email'
 EMAIL_PORT = 587
+EMAIL_HOST_USER = 'hardcore_burnell_kddnae'
+EMAIL_HOST_PASSWORD = 'e94b2983-854f-41cc-a806-b13b78203025'
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = ''
-EMAIL_HOST_PASSWORD = ''
+EMAIL_FROM_ADDRESS = 'info@laklakbox.ir'
+EMAIL_RECOVERY_TEMPLATE = """\
+Dear {name},
+You are receiving this email because a password reset request was just initiated for your account.
+If this request was from you, head on to the below link to reset your password:
+
+{reset_link}
+
+If it wasn't you, simply ignore this message.
+
+Bests,
+The LakLak Team.
+"""
