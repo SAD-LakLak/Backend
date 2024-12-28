@@ -10,6 +10,10 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 
 from core.serializers import UserSerializer
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth import logout
 from .models import PasswordRecoveryRequest
 
 class UserCreateAPIView(generics.CreateAPIView):
@@ -68,3 +72,9 @@ def reset_password_based_on_token(request, token):
             return Response({"success" : "True"})
         except:
             return Response({"success" : "False"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class LogoutAPIView(APIView):
+    def post(self, request):
+        logout(request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
