@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.conf import settings
@@ -14,13 +14,24 @@ class Product(models.Model):
     )
     name = models.CharField(max_length=255)
     info = models.TextField(max_length=5000)
-    amount = models.IntegerField()
-    is_active = models.BooleanField()
-    is_deleted = models.BooleanField()
+    is_active = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)
     last_update = models.DateTimeField(auto_now=True)
     creation_date = models.DateTimeField(auto_created=True)
     price = models.PositiveBigIntegerField()
     stock = models.PositiveIntegerField()
+
+
+    groups = models.ManyToManyField(
+        Group,
+        related_name='customuser_groups',  # Ensure a unique related_name
+        blank=True,
+    )
+    user_permissions = models.ManyToManyField(
+        Permission,
+        related_name='customuser_permissions',  # Ensure a unique related_name
+        blank=True,
+    )
 
 
 class CustomUser(AbstractUser):
