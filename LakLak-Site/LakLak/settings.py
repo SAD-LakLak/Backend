@@ -27,7 +27,7 @@ DEBUG = True
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -160,9 +160,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'fa-ir'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Iran'
 
 USE_I18N = True
 
@@ -178,3 +178,25 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Email server configurations
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.c1.liara.email'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'hardcore_burnell_kddnae'
+EMAIL_HOST_PASSWORD = 'e94b2983-854f-41cc-a806-b13b78203025'
+EMAIL_USE_TLS = True
+EMAIL_FROM_ADDRESS = 'info@laklakbox.ir'
+EMAIL_RECOVERY_TEMPLATE = """\
+Dear {name},
+You are receiving this email because a password reset request was just initiated for your account.
+If this request was sent from you, head on to the below link to reset your password:
+
+{reset_link}
+
+If it wasn't you, simply ignore this message.
+
+Bests,
+The LakLak Team.
+"""
+EMAIL_REQUEST_TTL = 20  # Duration in which the reset link is valid (in minutes).

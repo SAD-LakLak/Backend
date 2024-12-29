@@ -32,3 +32,12 @@ class CustomUser(AbstractUser):
     birth_date = models.DateTimeField()
     phone_number = models.CharField(max_length=20)
 
+
+# Create your models here.
+class PasswordRecoveryRequest(models.Model):
+    user = models.ForeignKey(get_user_model(),on_delete=models.CASCADE)
+    token = models.CharField(max_length=64)
+    date_created = models.DateTimeField(default=timezone.now)
+
+    def has_expired(self):
+        return self.date_created < timezone.now() - timedelta(minutes=settings.EMAIL_REQUEST_TTL)
