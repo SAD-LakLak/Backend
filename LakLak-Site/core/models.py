@@ -12,14 +12,15 @@ class Product(models.Model):
         ('clothing', 'Clothing'),
         ('toiletries', 'Toiletries')
     )
-    name = models.CharField(max_length=255)
-    info = models.TextField(max_length=5000)
-    is_active = models.BooleanField(default=False)
-    is_deleted = models.BooleanField(default=False)
-    last_update = models.DateTimeField(auto_now=True)
-    creation_date = models.DateTimeField(auto_created=True)
-    price = models.PositiveBigIntegerField()
-    stock = models.PositiveIntegerField()
+    type = models.CharField(max_length=50, choices=TYPE_CHOICES, blank=True)
+    name = models.CharField(max_length=255, blank=True)
+    info = models.TextField(max_length=5000, blank=True)
+    is_active = models.BooleanField(default=False, blank=True)
+    is_deleted = models.BooleanField(default=False, blank=True)
+    last_update = models.DateTimeField(auto_now=True, blank=True)
+    creation_date = models.DateTimeField(auto_created=True, blank=True)
+    price = models.PositiveBigIntegerField(blank=True)
+    stock = models.PositiveIntegerField(blank=True)
 
 
     groups = models.ManyToManyField(
@@ -42,10 +43,10 @@ class CustomUser(AbstractUser):
         ('delivery_personnel', 'Delivery Personnel'),
         ('supervisor', 'Service Supervisor')
     )
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='customer')
-    national_code = models.CharField(max_length=20)
-    birth_date = models.DateTimeField()
-    phone_number = models.CharField(max_length=20)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='customer', blank=True)
+    national_code = models.CharField(max_length=20, blank=True)
+    birth_date = models.DateTimeField(blank=True)
+    phone_number = models.CharField(max_length=20, blank=True)
 
 
 # Create your models here.
