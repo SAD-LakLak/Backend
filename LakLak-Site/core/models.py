@@ -1,5 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+from django.conf import settings
+from datetime import timedelta
 
 # Create your models here.
 class Product(models.Model):
