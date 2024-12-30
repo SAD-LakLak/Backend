@@ -14,4 +14,6 @@ urlpatterns = [
     path('reset_password/', views.send_password_recovery_email, name='send_password_email'),
     path('reset_password/<str:token>', views.reset_password_based_on_token, name='reset_with_token'),
     path('logout/', views.LogoutAPIView.as_view(), name='logout'),
+    path('products/', views.ProductListAPIView.as_view(), name='product-list'),
+
 ]
