@@ -1,20 +1,21 @@
 from django.contrib.auth import get_user_model, logout
 from django.core.mail import send_mail
+from django.shortcuts import get_object_or_404
 from django.conf import settings
 from django.utils.crypto import get_random_string
 from django.urls import reverse
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
-from core.serializers import UserSerializer
-from .models import PasswordRecoveryRequest
-from core.serializers import ProductSerializer
-from core.models import Product
+from rest_framework import filters
+from core.serializers import UserSerializer, ProductSerializer
+from core.models import Product, ProductImage
 from core.pagination import ProductPagination
-from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from core.filters import ProductFilter
+from .models import PasswordRecoveryRequest
 
 
 class UserCreateAPIView(generics.CreateAPIView):
@@ -76,6 +77,63 @@ def reset_password_based_on_token(request, token):
         except:
             return Response({"success" : "False"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+@api_view(['POST'])
+def register_new_product(request):
+    try:
+        type = request.POST['type']
+        if type not in [choice[0] for choice in Product.TYPE_CHOICES]:
+            raise ValueError
+        name = request.POST['name']
+        info = request.POST['description']
+        price = request.POST['price']
+        stock = request.POST['stock']
+    except Exception as e:
+        return Response({"success" : "false"}, status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        new_product = Product.objects.create(
+            type=type, name=name, info=info, is_active=True, price=price, stock=stock
+        )
+        return Response({"success" : "true", "id" : new_product.id})
+    except:
+        return Response({"success" : "false"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+def update_product(request):
+    try:
+        product = get_object_or_404(Product, pk=request.POST['id'])
+        for field, new_value in request.POST.items():
+            if field == 'type':
+                if new_value in [choice[0] for choice in Product.TYPE_CHOICES]:
+                    product.type = new_value
+                else:
+                    raise ValueError
+            if field == 'name':
+                product.name = new_value
+            if field == 'info':
+                product.info = new_value
+            if field == 'price':
+                product.price = new_value
+            if field == 'stock':
+                product.stock = new_value
+        product.save()
+        return Response({"success" : "true"})
+    except:
+        return Response({"success" : "false"}, status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def upload_product_image(request):
+    if request.FILES and request.FILES.get('image', False):
+        try:
+            product = get_object_or_404(Product, pk=request.POST['id'])
+            uploaded_image = request.FILES['image']
+            ProductImage.objects.create(image=uploaded_image, product=product)
+            return Response({"success" : "true"})
+        except:
+            return Response({"success" : "false"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        return Response({"success" : "false"}, status.HTTP_400_BAD_REQUEST)
 
 class LogoutAPIView(APIView):
     def post(self, request):

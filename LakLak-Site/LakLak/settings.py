@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -198,7 +199,6 @@ The LakLak Team.
 """
 EMAIL_REQUEST_TTL = 20  # Duration in which the reset link is valid (in minutes).
 
-import os
-
+# Media Settings
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
