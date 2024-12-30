@@ -1,23 +1,28 @@
-from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
-from core.models import Product, ProductImage
+from .models import Product, ProductImage, CustomUser
 
 
-class UserSerializer(serializers.ModelSerializer):
+class RegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True, min_length=8)
+
     class Meta:
-        model = get_user_model()  # Using the custom user model
-        fields = ['id', 'username', 'email', 'password']
-        extra_kwargs = {
-            'password': {'write_only': True}  # Ensure the password is write-only
-        }
+        model = CustomUser
+        fields = ['username', 'email', 'first_name', 'last_name', 'password', 'role', 'national_code', 'birth_date', 'phone_number']
 
     def create(self, validated_data):
-        user = get_user_model().objects.create_user(
-            **validated_data
+        user = CustomUser.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            password=validated_data['password'],
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', ''),
+            role=validated_data.get('role', 'customer'),
+            national_code=validated_data.get('national_code', ''),
+            birth_date=validated_data.get('birth_date', None),
+            phone_number=validated_data.get('phone_number', '')
         )
         return user
-
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):

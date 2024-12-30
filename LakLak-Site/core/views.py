@@ -3,12 +3,13 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils.crypto import get_random_string
 from django.urls import reverse
-from rest_framework import generics, status
+from rest_framework.permissions import AllowAny
+from rest_framework import generics, status, viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
-from core.serializers import UserSerializer
-from .models import PasswordRecoveryRequest
+from .serializers import RegistrationSerializer
+from .models import PasswordRecoveryRequest, CustomUser
 from core.serializers import ProductSerializer
 from core.models import Product
 from core.pagination import ProductPagination
@@ -17,9 +18,10 @@ from rest_framework import filters
 from core.filters import ProductFilter
 
 
-class UserCreateAPIView(generics.CreateAPIView):
-    queryset = get_user_model().objects.all()
-    serializer_class = UserSerializer
+class RegistrationView(generics.CreateAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = RegistrationSerializer
+    permission_classes = [AllowAny]  # Allow anyone to access this endpoint
 
 
 @api_view(['POST'])
