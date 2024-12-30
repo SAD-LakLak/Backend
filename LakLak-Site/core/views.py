@@ -3,14 +3,19 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils.crypto import get_random_string
 from django.urls import reverse
-
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
-
 from core.serializers import UserSerializer
 from .models import PasswordRecoveryRequest
+from core.serializers import ProductSerializer
+from core.models import Product
+from core.pagination import ProductPagination
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
+from core.filters import ProductFilter
+
 
 class UserCreateAPIView(generics.CreateAPIView):
     queryset = get_user_model().objects.all()
@@ -24,7 +29,7 @@ def send_password_recovery_email(request):
         user = get_user_model().objects.get(email=email_address)
     except:
         return Response({"success" : "false", "message":"No user found with this email"},status=status.HTTP_406_NOT_ACCEPTABLE)
-    
+
     # Delete any remained reset requests for this user from past, if any
     PasswordRecoveryRequest.objects.filter(user=user).delete()
 
@@ -76,3 +81,13 @@ class LogoutAPIView(APIView):
     def post(self, request):
         logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ProductListAPIView(generics.ListAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    pagination_class = ProductPagination
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
+    filterset_class = ProductFilter
+    search_fields = ['name', 'info']
+    ordering_fields = ['name', 'price', 'creation_date', 'type']

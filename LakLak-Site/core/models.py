@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.conf import settings
 from datetime import timedelta
 
+
 # Create your models here.
 class Product(models.Model):
     TYPE_CHOICES = (
@@ -21,7 +22,7 @@ class Product(models.Model):
     creation_date = models.DateTimeField(auto_created=True, blank=True)
     price = models.PositiveBigIntegerField(blank=True)
     stock = models.PositiveIntegerField(blank=True)
-
+    images = models.ManyToManyField('ProductImage', blank=True, related_name='products')
 
     groups = models.ManyToManyField(
         Group,
@@ -35,6 +36,11 @@ class Product(models.Model):
     )
 
 
+class ProductImage(models.Model):
+    image = models.ImageField(upload_to='product_images/')
+    product = models.ForeignKey(Product, related_name='product_images', on_delete=models.CASCADE)
+
+
 class CustomUser(AbstractUser):
     ROLE_CHOICES = (
         ('supplier', 'Supplier'),
@@ -45,13 +51,13 @@ class CustomUser(AbstractUser):
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='customer', blank=True)
     national_code = models.CharField(max_length=20, blank=True)
-    birth_date = models.DateTimeField(blank=True)
+    birth_date = models.DateTimeField(blank=True, null=True)
     phone_number = models.CharField(max_length=20, blank=True)
 
 
 # Create your models here.
 class PasswordRecoveryRequest(models.Model):
-    user = models.ForeignKey(get_user_model(),on_delete=models.CASCADE)
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
     token = models.CharField(max_length=64)
     date_created = models.DateTimeField(default=timezone.now)
 
