@@ -6,7 +6,6 @@ from django.conf import settings
 from datetime import timedelta
 
 
-# Create your models here.
 class Product(models.Model):
     TYPE_CHOICES = (
         ('edible', 'Edible Products'),
@@ -18,8 +17,8 @@ class Product(models.Model):
     info = models.TextField(max_length=5000, blank=True)
     is_active = models.BooleanField(default=False, blank=True)
     is_deleted = models.BooleanField(default=False, blank=True)
-    last_update = models.DateTimeField(auto_now=True, blank=True)
-    creation_date = models.DateTimeField(auto_created=True, blank=True)
+    last_update = models.DateTimeField(auto_now=True)
+    creation_date = models.DateTimeField(auto_now_add=True)
     price = models.PositiveBigIntegerField(blank=True)
     stock = models.PositiveIntegerField(blank=True)
     images = models.ManyToManyField('ProductImage', blank=True, related_name='products')
@@ -40,7 +39,7 @@ class ProductImage(models.Model):
     image = models.ImageField(upload_to='product_images/')
     product = models.ForeignKey(Product, related_name='product_images', on_delete=models.CASCADE)
 
-
+    
 class CustomUser(AbstractUser):
     ROLE_CHOICES = (
         ('supplier', 'Supplier'),

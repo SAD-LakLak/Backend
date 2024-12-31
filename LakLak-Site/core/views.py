@@ -31,7 +31,7 @@ def send_password_recovery_email(request):
     try:
         user = get_user_model().objects.get(email=email_address)
     except:
-        return Response({"success" : "false", "message":"No user found with this email"},status=status.HTTP_406_NOT_ACCEPTABLE)
+        return failure_response("No user found with this email", status=status.HTTP_406_NOT_ACCEPTABLE)
 
     # Delete any remained reset requests for this user from past, if any
     PasswordRecoveryRequest.objects.filter(user=user).delete()
@@ -49,7 +49,7 @@ def send_password_recovery_email(request):
                   fail_silently=False,
         )
     except Exception as e:
-        return Response({"success" : "false", "message" : str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return failure_response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response(
         {"success" : "True"},
@@ -91,15 +91,15 @@ def register_new_product(request):
         price = request.POST['price']
         stock = request.POST['stock']
     except Exception as e:
-        return Response({"success" : "false"}, status.HTTP_400_BAD_REQUEST)
+        return failure_response(str(e))
     
     try:
         new_product = Product.objects.create(
             type=type, name=name, info=info, is_active=True, price=price, stock=stock
         )
         return Response({"success" : "true", "id" : new_product.id})
-    except:
-        return Response({"success" : "false"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        return failure_response(str(e))
 
 @api_view(['POST'])
 def update_product(request):
@@ -150,8 +150,8 @@ def upload_product_image(request):
             uploaded_image = request.FILES['image']
             ProductImage.objects.create(image=uploaded_image, product=product)
             return Response({"success" : "true"})
-        except:
-            return Response({"success" : "false"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return failure_response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         return failure_response('no image provided')
 
