@@ -6,12 +6,38 @@ from django.conf import settings
 from datetime import timedelta
 
 
+# Create your models here.
+
+class CustomUser(AbstractUser):
+    ROLE_CHOICES = (
+        ('supplier', 'Supplier'),
+        ('package_combinator', 'Package Combinator'),
+        ('customer', 'Customer'),
+        ('delivery_personnel', 'Delivery Personnel'),
+        ('supervisor', 'Service Supervisor')
+    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='customer', blank=True)
+    national_code = models.CharField(max_length=20, blank=True)
+    birth_date = models.DateTimeField(blank=True, null=True)
+    phone_number = models.CharField(max_length=20, blank=True)
+
+
+# Create your models here.
+class PasswordRecoveryRequest(models.Model):
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    token = models.CharField(max_length=64)
+    date_created = models.DateTimeField(default=timezone.now)
+
+    def has_expired(self):
+        return self.date_created < timezone.now() - timedelta(minutes=settings.EMAIL_REQUEST_TTL)
+
 class Product(models.Model):
     TYPE_CHOICES = (
         ('edible', 'Edible Products'),
         ('clothing', 'Clothing'),
         ('toiletries', 'Toiletries')
     )
+    provider = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     type = models.CharField(max_length=50, choices=TYPE_CHOICES, blank=True)
     name = models.CharField(max_length=255, blank=True)
     info = models.TextField(max_length=5000, blank=True)
@@ -34,30 +60,7 @@ class Product(models.Model):
         blank=True,
     )
 
-
 class ProductImage(models.Model):
     image = models.ImageField(upload_to='product_images/')
     product = models.ForeignKey(Product, related_name='product_images', on_delete=models.CASCADE)
 
-    
-class CustomUser(AbstractUser):
-    ROLE_CHOICES = (
-        ('supplier', 'Supplier'),
-        ('package_combinator', 'Package Combinator'),
-        ('customer', 'Customer'),
-        ('delivery_personnel', 'Delivery Personnel'),
-        ('supervisor', 'Service Supervisor')
-    )
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='customer', blank=True)
-    national_code = models.CharField(max_length=20, blank=True)
-    birth_date = models.DateTimeField(blank=True, null=True)
-    phone_number = models.CharField(max_length=20, blank=True)
-
-
-class PasswordRecoveryRequest(models.Model):
-    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
-    token = models.CharField(max_length=64)
-    date_created = models.DateTimeField(default=timezone.now)
-
-    def has_expired(self):
-        return self.date_created < timezone.now() - timedelta(minutes=settings.EMAIL_REQUEST_TTL)

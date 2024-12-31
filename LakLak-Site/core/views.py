@@ -4,23 +4,24 @@ from django.shortcuts import get_object_or_404
 from django.conf import settings
 from django.utils.crypto import get_random_string
 from django.urls import reverse
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import generics, status
+from rest_framework.permissions import AllowAny
+from rest_framework import generics, status, viewsets, filters
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.views import APIView
 from rest_framework import filters
+from django_filters.rest_framework import DjangoFilterBackend
 from core.serializers import UserSerializer, ProductSerializer
-from core.models import Product, ProductImage
+from core.models import Product, ProductImage, PasswordRecoveryRequest, CustomUser
+from .serializers import RegistrationSerializer
 from core.pagination import ProductPagination
-from rest_framework import filters
 from core.filters import ProductFilter
-from .models import PasswordRecoveryRequest
 
 
-class UserCreateAPIView(generics.CreateAPIView):
-    queryset = get_user_model().objects.all()
-    serializer_class = UserSerializer
+class RegistrationView(generics.CreateAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = RegistrationSerializer
+    permission_classes = [AllowAny]  # Allow anyone to access this endpoint
 
 def failure_response(message, status=status.HTTP_400_BAD_REQUEST):
     return Response({"success" : "false", "message" : message}, status=status)
@@ -170,7 +171,7 @@ class LogoutAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ProductListAPIView(generics.ListAPIView):
-    queryset = Product.objects.all()
+    queryset = Product.objects.filter(is_deleted=False)
     serializer_class = ProductSerializer
     pagination_class = ProductPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]

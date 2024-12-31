@@ -6,9 +6,9 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-app_name = 'core'
+
 urlpatterns = [
-    path('register/', views.UserCreateAPIView.as_view(), name='user-register'),
+    path('register/', views.RegistrationView.as_view(), name='register'),
     path('api/token/', TokenObtainPairView.as_view(serializer_class=CustomTokenObtainPairSerializer), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('reset_password/', views.send_password_recovery_email, name='send_password_email'),
