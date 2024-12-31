@@ -86,7 +86,7 @@ class LogoutAPIView(APIView):
 
 
 class ProductListAPIView(generics.ListAPIView):
-    queryset = Product.objects.all()
+    queryset = Product.objects.filter(is_deleted=False)
     serializer_class = ProductSerializer
     pagination_class = ProductPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
