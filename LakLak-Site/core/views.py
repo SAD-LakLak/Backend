@@ -55,7 +55,7 @@ def send_password_recovery_email(request):
         return failure_response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response(
-        {"success" : "True"},
+        {"success" : "true"},
           status=status.HTTP_200_OK
           )
 
@@ -68,9 +68,9 @@ def reset_password_based_on_token(request, token):
             reset_request.delete()
             raise Exception("Expired Token")
     except:
-        return Response({"tokenValidity" : "False"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"tokenValidity" : "false"}, status=status.HTTP_400_BAD_REQUEST)
     if request.method == 'GET':
-        return Response({"tokenValidity" : "True", "resetToken" : reset_request.token})
+        return Response({"tokenValidity" : "true", "resetToken" : reset_request.token})
     elif request.method == 'POST':
         try:
             user = reset_request.user
@@ -78,9 +78,9 @@ def reset_password_based_on_token(request, token):
             user.set_password(request.POST['newPassword'])
             user.save()
             reset_request.delete()
-            return Response({"success" : "True"})
+            return Response({"success" : "true"})
         except:
-            return Response({"success" : "False"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"success" : "false"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
@@ -111,6 +111,8 @@ def register_new_product(request):
 def update_product(request):
     product = get_object_or_404(Product, pk=request.POST['id'])
     for field, new_value in request.POST.items():
+        if field == 'id':
+            pass
         if field == 'type':
             if new_value in [choice[0] for choice in Product.TYPE_CHOICES]:
                 product.type = new_value
@@ -162,21 +164,21 @@ def upload_product_image(request):
     else:
         return failure_response('no image provided')
 
-@api_view(['POST'])
-@permission_classes([IsSupplier, IsSupervisor])
-def delete_product_image(request):
+@api_view(['DELETE'])
+@permission_classes([IsSupplier])
+def delete_product_image(request, image_id):
     try:
-        image = get_object_or_404(ProductImage, pk=request.POST['id'])
+        image = get_object_or_404(ProductImage, pk=image_id, provider=request.user)
         image.delete()
         return Response({"success" : "true"})
     except:
         return failure_response('server error', status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['DELETE'])
-@permission_classes([IsSupplier, IsSupervisor])
+@permission_classes([IsSupplier])
 def delete_product(request, product_id):
     try:
-        product = get_object_or_404(Product, pk=product_id)
+        product = get_object_or_404(Product, pk=product_id, provider=request.user)
         product.is_deleted = True
         product_id.save()
     except:
