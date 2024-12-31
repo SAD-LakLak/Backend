@@ -22,6 +22,8 @@ class UserCreateAPIView(generics.CreateAPIView):
     queryset = get_user_model().objects.all()
     serializer_class = UserSerializer
 
+def failure_response(message, status=status.HTTP_400_BAD_REQUEST):
+    return Response({"success" : "false", "message" : message}, status=status)
 
 @api_view(['POST'])
 def send_password_recovery_email(request):
@@ -101,26 +103,44 @@ def register_new_product(request):
 
 @api_view(['POST'])
 def update_product(request):
-    try:
-        product = get_object_or_404(Product, pk=request.POST['id'])
-        for field, new_value in request.POST.items():
-            if field == 'type':
-                if new_value in [choice[0] for choice in Product.TYPE_CHOICES]:
-                    product.type = new_value
-                else:
-                    raise ValueError
-            if field == 'name':
-                product.name = new_value
-            if field == 'info':
-                product.info = new_value
-            if field == 'price':
-                product.price = new_value
-            if field == 'stock':
-                product.stock = new_value
-        product.save()
-        return Response({"success" : "true"})
-    except:
-        return Response({"success" : "false"}, status.HTTP_400_BAD_REQUEST)
+    product = get_object_or_404(Product, pk=request.POST['id'])
+    for field, new_value in request.POST.items():
+        if field == 'type':
+            if new_value in [choice[0] for choice in Product.TYPE_CHOICES]:
+                product.type = new_value
+            else:
+                return failure_response('invalid type')
+        elif field == 'name':
+            if new_value == '':
+                return failure_response('empty name')
+            product.name = new_value
+        elif field == 'info':
+            product.info = new_value
+        elif field == 'price':
+            try:
+                product.price = int(new_value)
+            except:
+                return failure_response('non-integer value')
+            if int(new_value) < 0:
+                return failure_response('negative price')
+        elif field == 'stock':
+            try:
+                product.stock = int(new_value)
+            except:
+                return failure_response('non-integer stock')
+            if int(new_value) < 0:
+                return failure_response('negative stock')
+        elif field == 'active':
+            if new_value == 'true':
+                product.is_active = True
+            elif new_value == 'false':
+                product.is_active = False
+            else:
+                return failure_response('invalid active state')
+        else:
+            return failure_response('unsupported field for change: ' + field)
+    product.save()
+    return Response({"success" : "true"})
 
 @api_view(['POST'])
 def upload_product_image(request):
@@ -133,13 +153,21 @@ def upload_product_image(request):
         except:
             return Response({"success" : "false"}, status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
-        return Response({"success" : "false"}, status.HTTP_400_BAD_REQUEST)
+        return failure_response('no image provided')
+
+@api_view(['DELETE'])
+def delete_product(request, product_id):
+    try:
+        product = get_object_or_404(Product, pk=product_id)
+        product.is_deleted = True
+        product_id.save()
+    except:
+        return failure_response('server error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class LogoutAPIView(APIView):
     def post(self, request):
         logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
-
 
 class ProductListAPIView(generics.ListAPIView):
     queryset = Product.objects.all()
