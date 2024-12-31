@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.conf import settings
 from django.utils.crypto import get_random_string
 from django.urls import reverse
+from django.db.models import F
 from rest_framework.permissions import AllowAny
 from rest_framework import generics, status, viewsets, filters
 from rest_framework.response import Response
@@ -164,6 +165,28 @@ def delete_product(request, product_id):
         product_id.save()
     except:
         return failure_response('server error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+def bulk_stock_change(request):
+    try:
+        provider_id = request.POST['provider_id']
+        delta = int(request.POST['delta'])
+    except Exception as e:
+        return failure_response('not provided: ' + str(e))
+    try:
+        if delta > 0:
+            Product.objects.filter(provider_id=provider_id).update(stock=F("stock")+delta)
+        else:
+            Product.objects\
+                .filter(provider_id=provider_id, stock__gt=-delta)\
+                .update(stock=F("stock")+delta)
+            Product.objects\
+                .filter(provider_id=provider_id, stock__lte=-delta)\
+                .update(stock=0)
+        return Response({"success" : "true"})
+    except:
+        return failure_response('server error', status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 
 class LogoutAPIView(APIView):
     def post(self, request):
