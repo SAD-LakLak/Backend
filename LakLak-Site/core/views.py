@@ -6,17 +6,18 @@ from django.utils.crypto import get_random_string
 from django.urls import reverse
 from django.db.models import F
 from rest_framework.permissions import AllowAny
-from rest_framework import generics, status, viewsets, filters
+from rest_framework import generics, status, filters
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.views import APIView
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
-from core.serializers import UserSerializer, ProductSerializer
+from core.serializers import ProductSerializer
 from core.models import Product, ProductImage, PasswordRecoveryRequest, CustomUser
 from .serializers import RegistrationSerializer
 from core.pagination import ProductPagination
 from core.filters import ProductFilter
+from core.permissions import *
 
 
 class RegistrationView(generics.CreateAPIView):
@@ -83,6 +84,7 @@ def reset_password_based_on_token(request, token):
 
 
 @api_view(['POST'])
+@permission_classes([IsSupplier, IsSupervisor])
 def register_new_product(request):
     try:
         type = request.POST['type']
@@ -92,18 +94,20 @@ def register_new_product(request):
         info = request.POST['description']
         price = request.POST['price']
         stock = request.POST['stock']
+        provider = request.user
     except Exception as e:
         return failure_response(str(e))
     
     try:
         new_product = Product.objects.create(
-            type=type, name=name, info=info, is_active=True, price=price, stock=stock
+            type=type, name=name, info=info, is_active=True, price=price, stock=stock, provider=provider
         )
         return Response({"success" : "true", "id" : new_product.id})
     except Exception as e:
         return failure_response(str(e))
 
 @api_view(['POST'])
+@permission_classes([IsSupplier, IsSupervisor])
 def update_product(request):
     product = get_object_or_404(Product, pk=request.POST['id'])
     for field, new_value in request.POST.items():
@@ -145,6 +149,7 @@ def update_product(request):
     return Response({"success" : "true"})
 
 @api_view(['POST'])
+@permission_classes([IsSupplier, IsSupervisor])
 def upload_product_image(request):
     if request.FILES and request.FILES.get('image', False):
         try:
@@ -158,6 +163,7 @@ def upload_product_image(request):
         return failure_response('no image provided')
 
 @api_view(['DELETE'])
+@permission_classes([IsSupplier, IsSupervisor])
 def delete_product(request, product_id):
     try:
         product = get_object_or_404(Product, pk=product_id)
@@ -167,9 +173,10 @@ def delete_product(request, product_id):
         return failure_response('server error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
+@permission_classes([IsSupplier, IsSupervisor])
 def bulk_stock_change(request):
+    provider_id = request.user
     try:
-        provider_id = request.POST['provider_id']
         delta = int(request.POST['delta'])
     except Exception as e:
         return failure_response('not provided: ' + str(e))
