@@ -84,7 +84,7 @@ def reset_password_based_on_token(request, token):
 
 
 @api_view(['POST'])
-@permission_classes([IsSupplier, IsSupervisor])
+@permission_classes([IsSupplier])
 def register_new_product(request):
     try:
         type = request.POST['type']
@@ -162,6 +162,16 @@ def upload_product_image(request):
     else:
         return failure_response('no image provided')
 
+@api_view(['POST'])
+@permission_classes([IsSupplier, IsSupervisor])
+def delete_product_image(request):
+    try:
+        image = get_object_or_404(ProductImage, pk=request.POST['id'])
+        image.delete()
+        return Response({"success" : "true"})
+    except:
+        return failure_response('server error', status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 @api_view(['DELETE'])
 @permission_classes([IsSupplier, IsSupervisor])
 def delete_product(request, product_id):
@@ -173,7 +183,7 @@ def delete_product(request, product_id):
         return failure_response('server error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
-@permission_classes([IsSupplier, IsSupervisor])
+@permission_classes([IsSupplier])
 def bulk_stock_change(request):
     provider_id = request.user
     try:
@@ -193,6 +203,35 @@ def bulk_stock_change(request):
         return Response({"success" : "true"})
     except:
         return failure_response('server error', status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+@api_view(['POST'])
+@permission_classes([IsSupplier])
+def granular_bulk_stock_change(request):
+    provider = request.user
+    try:
+        product_ids = list(map(int, request.POST['ids'].split('-')))
+    except:
+        return failure_response('not provided: product_ids')
+    try:
+        delta = int(request.POST['delta'])
+    except:
+        return failure_response('not provided: delta')
+    try:
+        if (delta > 0):
+            Product.objects\
+                .filter(pk__in=product_ids, provider=provider)\
+                .update(stock=F("stock")+delta)
+        if (delta < 0):
+            Product.objects\
+                .filter(pk__in=product_ids, provider=provider, stock__gt=-delta)\
+                .update(stock=F("stock")+delta)
+            Product.objects\
+            .filter(pk__in=product_ids, provider=provider, stock__lte=-delta)\
+            .update(stock=0)
+    except:
+        return failure_response('server error', status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     
 
 class LogoutAPIView(APIView):
