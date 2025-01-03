@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.views import APIView
 from rest_framework import filters
+from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from core.serializers import ProductSerializer
 from core.models import Product, ProductImage, PasswordRecoveryRequest, CustomUser
@@ -25,10 +26,11 @@ class RegistrationView(generics.CreateAPIView):
     serializer_class = CustomUserSerializer
     permission_classes = [AllowAny]  # Allow anyone to access this endpoint
 
-class GetUserByUsernameView(APIView):
-    def get(self, request, username):
+class GetUserByTokenView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
         try:
-            user = CustomUser.objects.get(username=username)
             serializer = CustomUserSerializer(user)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except CustomUser.DoesNotExist:
