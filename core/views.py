@@ -14,7 +14,7 @@ from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
 from core.serializers import ProductSerializer
 from core.models import Product, ProductImage, PasswordRecoveryRequest, CustomUser
-from .serializers import RegistrationSerializer
+from .serializers import CustomUserSerializer
 from core.pagination import ProductPagination
 from core.filters import ProductFilter
 from core.permissions import *
@@ -22,8 +22,18 @@ from core.permissions import *
 
 class RegistrationView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
-    serializer_class = RegistrationSerializer
+    serializer_class = CustomUserSerializer
     permission_classes = [AllowAny]  # Allow anyone to access this endpoint
+
+class GetUserByUsernameView(APIView):
+    def get(self, request, username):
+        try:
+            user = CustomUser.objects.get(username=username)
+            serializer = CustomUserSerializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
 
 def failure_response(message, status=status.HTTP_400_BAD_REQUEST):
     return Response({"success" : "false", "message" : message}, status=status)
