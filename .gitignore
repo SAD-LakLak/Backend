@@ -6,6 +6,8 @@
 *.pot
 *.pyc
 __pycache__/
+.pg_service.conf
+.my_pgpass
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
