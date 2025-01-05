@@ -119,12 +119,12 @@ def register_new_product(request):
         return failure_response(str(e))
 
 @api_view(['POST'])
-@permission_classes([IsSupplier, IsSupervisor])
+@permission_classes([IsSupplier])
 def update_product(request):
     product = get_object_or_404(Product, pk=request.POST['id'])
     for field, new_value in request.POST.items():
         if field == 'id':
-            pass
+            continue
         if field == 'type':
             if new_value in [choice[0] for choice in Product.TYPE_CHOICES]:
                 product.type = new_value
@@ -163,7 +163,7 @@ def update_product(request):
     return Response({"success" : "true"})
 
 @api_view(['POST'])
-@permission_classes([IsSupplier, IsSupervisor])
+@permission_classes([IsSupplier])
 def upload_product_image(request):
     if request.FILES and request.FILES.get('image', False):
         try:
@@ -180,7 +180,10 @@ def upload_product_image(request):
 @permission_classes([IsSupplier])
 def delete_product_image(request, image_id):
     try:
-        image = get_object_or_404(ProductImage, pk=image_id, provider=request.user)
+        image = get_object_or_404(ProductImage, pk=image_id)
+        provider = image.product.provider
+        if (provider != request.user):
+            return failure_response("you do not own that product")
         image.delete()
         return Response({"success" : "true"})
     except:
@@ -243,6 +246,7 @@ def granular_bulk_stock_change(request):
             Product.objects\
             .filter(pk__in=product_ids, provider=provider, stock__lte=-delta)\
             .update(stock=0)
+        return Response({"success" : "true"})
     except:
         return failure_response('server error', status.HTTP_500_INTERNAL_SERVER_ERROR)
     
