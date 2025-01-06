@@ -1,3 +1,4 @@
+from json import loads as parse_json
 from django.contrib.auth import get_user_model, logout
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
@@ -42,11 +43,12 @@ def failure_response(message, status=status.HTTP_400_BAD_REQUEST):
 
 @api_view(['POST'])
 def send_password_recovery_email(request):
-    email_address = request.POST['email']
     try:
-        user = get_user_model().objects.get(email=email_address)
+        email_address = parse_json(request.body)['email']
     except:
-        return failure_response("No user found with this email", status=status.HTTP_406_NOT_ACCEPTABLE)
+        return failure_response("No email provided")
+    
+    user = get_object_or_404(CustomUser, email=email_address)
 
     # Delete any remained reset requests for this user from past, if any
     PasswordRecoveryRequest.objects.filter(user=user).delete()
@@ -80,32 +82,37 @@ def reset_password_based_on_token(request, token):
             reset_request.delete()
             raise Exception("Expired Token")
     except:
-        return Response({"tokenValidity" : "false"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"tokenValidity" : "false"})
     if request.method == 'GET':
         return Response({"tokenValidity" : "true", "resetToken" : reset_request.token})
     elif request.method == 'POST':
         try:
+            new_password = parse_json(request.body)['new_password']
+        except:
+            return failure_response("No password provided")
+        try:
             user = reset_request.user
             # TODO (optional) : Additional check for validity of the new password (eg its length)            
-            user.set_password(request.POST['newPassword'])
+            user.set_password(new_password)
             user.save()
             reset_request.delete()
             return Response({"success" : "true"})
         except:
-            return Response({"success" : "false"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return failure_response("server error", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
 @permission_classes([IsSupplier])
 def register_new_product(request):
     try:
-        type = request.POST['type']
+        data = parse_json(request.body)
+        type = data['type']
         if type not in [choice[0] for choice in Product.TYPE_CHOICES]:
             raise ValueError
-        name = request.POST['name']
-        info = request.POST['description']
-        price = request.POST['price']
-        stock = request.POST['stock']
+        name = data['name']
+        info = data['description']
+        price = data['price']
+        stock = data['stock']
         provider = request.user
     except Exception as e:
         return failure_response(str(e))
@@ -116,13 +123,19 @@ def register_new_product(request):
         )
         return Response({"success" : "true", "id" : new_product.id})
     except Exception as e:
-        return failure_response(str(e))
+        return failure_response("server error: " + str(e))
 
 @api_view(['POST'])
 @permission_classes([IsSupplier])
 def update_product(request):
-    product = get_object_or_404(Product, pk=request.POST['id'])
-    for field, new_value in request.POST.items():
+    try:
+        data = parse_json(request.body)
+    except:
+        return failure_response("invalid data format")
+    if data.get('id', None) is None:
+        return failure_response("id not provided")
+    product = get_object_or_404(Product, pk=data['id'])
+    for field, new_value in data.items():
         if field == 'id':
             continue
         if field == 'type':
@@ -159,8 +172,11 @@ def update_product(request):
                 return failure_response('invalid active state')
         else:
             return failure_response('unsupported field for change: ' + field)
-    product.save()
-    return Response({"success" : "true"})
+    try:
+        product.save()
+        return Response({"success" : "true"})
+    except:
+        return failure_response("server error", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([IsSupplier])
@@ -204,7 +220,7 @@ def delete_product(request, product_id):
 def bulk_stock_change(request):
     provider_id = request.user
     try:
-        delta = int(request.POST['delta'])
+        delta = int(parse_json(request.body)['delta'])
     except Exception as e:
         return failure_response('not provided: ' + str(e))
     try:
@@ -227,13 +243,21 @@ def bulk_stock_change(request):
 def granular_bulk_stock_change(request):
     provider = request.user
     try:
-        product_ids = list(map(int, request.POST['ids'].split('-')))
+        data = parse_json(request.body)
+        if data.get('ids', None) is None:
+            return failure_response("id list not provided")
+        if data.get('delta', None) is None:
+            return failure_response("delta not provided")
     except:
-        return failure_response('not provided: product_ids')
+        return failure_response("invalid data format")
     try:
-        delta = int(request.POST['delta'])
+        product_ids = list(map(int, data['ids'].split('-')))
     except:
-        return failure_response('not provided: delta')
+        return failure_response('invalid id list')
+    try:
+        delta = int(data['delta'])
+    except:
+        return failure_response('invalid delta')
     try:
         if (delta > 0):
             Product.objects\
