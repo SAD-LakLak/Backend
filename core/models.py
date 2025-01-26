@@ -35,7 +35,6 @@ class Product(models.Model):
     TYPE_CHOICES = (
         ('food', 'Food'),
         ('clothing', 'Clothing'),
-        ('toiletries', 'Toiletries'),
         ('service', 'Service'),
         ('sanitary', 'Sanitary'),
         ('entertainment', 'Entertainment'),
