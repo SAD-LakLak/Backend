@@ -33,9 +33,13 @@ class PasswordRecoveryRequest(models.Model):
 
 class Product(models.Model):
     TYPE_CHOICES = (
-        ('edible', 'Edible Products'),
+        ('food', 'Food'),
         ('clothing', 'Clothing'),
-        ('toiletries', 'Toiletries')
+        ('toiletries', 'Toiletries'),
+        ('service', 'Service'),
+        ('sanitary', 'Sanitary'),
+        ('entertainment', 'Entertainment'),
+        ('other', 'Other')
     )
     provider = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     type = models.CharField(max_length=50, choices=TYPE_CHOICES, blank=True)
