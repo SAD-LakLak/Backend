@@ -3,10 +3,10 @@ from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.conf import settings
+from django.db.models import Sum
 from datetime import timedelta
 
 
-# Create your models here.
 
 class CustomUser(AbstractUser):
     ROLE_CHOICES = (
@@ -22,7 +22,6 @@ class CustomUser(AbstractUser):
     phone_number = models.CharField(max_length=20, blank=True)
 
 
-# Create your models here.
 class PasswordRecoveryRequest(models.Model):
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
     token = models.CharField(max_length=64)
@@ -67,3 +66,11 @@ class ProductImage(models.Model):
     image = models.ImageField(upload_to='product_images/')
     product = models.ForeignKey(Product, related_name='product_images', on_delete=models.CASCADE)
 
+class Package(models.Model):
+    name = models.CharField(max_length=255)
+    products = models.ManyToManyField(Product, related_name='packages')
+    
+    @property
+    def total_price(self):
+        return sum(product.price for product in self.products.all())
+    
