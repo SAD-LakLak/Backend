@@ -11,7 +11,7 @@ from rest_framework import generics, status, filters
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.views import APIView
-from rest_framework import filters
+from rest_framework import filters, serializers
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from core.serializers import ProductSerializer
@@ -282,10 +282,17 @@ class LogoutAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ProductListAPIView(generics.ListAPIView):
-    queryset = Product.objects.filter(is_deleted=False)
     serializer_class = ProductSerializer
     pagination_class = ProductPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_class = ProductFilter
     search_fields = ['name', 'info']
     ordering_fields = ['name', 'price', 'creation_date', 'type']
+
+    def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            raise serializers.ValidationError("You must be a provider to view products.")
+        queryset = Product.objects.filter(provider=self.request.user, is_deleted=False)
+        if not queryset.exists():
+            raise serializers.ValidationError("This provider does not have any products.")
+        return queryset
