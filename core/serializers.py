@@ -1,6 +1,6 @@
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
-from .models import Product, ProductImage, CustomUser
+from .models import Product, ProductImage, CustomUser, Package
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -51,3 +51,9 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ['id', 'type', 'name', 'info', 'price', 'stock', 'is_active', 'product_images']
+
+class PackageSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Package
+        fields = '__all__'
