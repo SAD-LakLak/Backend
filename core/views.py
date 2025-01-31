@@ -15,11 +15,12 @@ from rest_framework import filters, serializers
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from core.serializers import ProductSerializer
-from core.models import Product, ProductImage, PasswordRecoveryRequest, CustomUser
-from .serializers import CustomUserSerializer
+from core.models import Product, ProductImage, PasswordRecoveryRequest, CustomUser, Package
+from .serializers import CustomUserSerializer, PackageSerializer
 from core.pagination import ProductPagination
-from core.filters import ProductFilter
+from core.filters import ProductFilter, PackageFilter
 from core.permissions import *
+from django.db.models import F, Sum
 
 
 class RegistrationView(generics.CreateAPIView):
@@ -296,3 +297,12 @@ class ProductListAPIView(generics.ListAPIView):
         if not queryset.exists():
             raise serializers.ValidationError("This provider does not have any products.")
         return queryset
+
+class PackageListAPIView(generics.ListAPIView):
+    serializer_class = PackageSerializer
+    pagination_class = ProductPagination
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
+    filterset_class = PackageFilter
+    search_fields = ['name', 'products__name']
+    ordering_fields = ['name', 'id', 'total_price']
+    queryset = Package.objects.all()
