@@ -210,9 +210,13 @@ def delete_product_image(request, image_id):
 @permission_classes([IsSupplier])
 def delete_product(request, product_id):
     try:
-        product = get_object_or_404(Product, pk=product_id, provider=request.user)
+        product = Product.objects.get(pk=product_id, provider=request.user, is_deleted=False)
+    except:
+        return failure_response("no such object exists", status=status.HTTP_404_NOT_FOUND)
+    try:
         product.is_deleted = True
-        product_id.save()
+        product.save()
+        return Response({"success" : "true"})
     except:
         return failure_response('server error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
