@@ -11,15 +11,16 @@ from rest_framework import generics, status, filters
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.views import APIView
-from rest_framework import filters
+from rest_framework import filters, serializers
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from core.serializers import ProductSerializer
-from core.models import Product, ProductImage, PasswordRecoveryRequest, CustomUser
-from .serializers import CustomUserSerializer
+from core.models import Product, ProductImage, PasswordRecoveryRequest, CustomUser, Package
+from .serializers import CustomUserSerializer, PackageSerializer
 from core.pagination import ProductPagination
-from core.filters import ProductFilter
+from core.filters import ProductFilter, PackageFilter
 from core.permissions import *
+from django.db.models import F, Sum
 
 
 class RegistrationView(generics.CreateAPIView):
@@ -209,9 +210,13 @@ def delete_product_image(request, image_id):
 @permission_classes([IsSupplier])
 def delete_product(request, product_id):
     try:
-        product = get_object_or_404(Product, pk=product_id, provider=request.user)
+        product = Product.objects.get(pk=product_id, provider=request.user, is_deleted=False)
+    except:
+        return failure_response("no such object exists", status=status.HTTP_404_NOT_FOUND)
+    try:
         product.is_deleted = True
-        product_id.save()
+        product.save()
+        return Response({"success" : "true"})
     except:
         return failure_response('server error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -282,10 +287,26 @@ class LogoutAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ProductListAPIView(generics.ListAPIView):
-    queryset = Product.objects.filter(is_deleted=False)
     serializer_class = ProductSerializer
     pagination_class = ProductPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_class = ProductFilter
     search_fields = ['name', 'info']
     ordering_fields = ['name', 'price', 'creation_date', 'type']
+
+    def get_queryset(self):
+        if not self.request.user.is_authenticated:
+            raise serializers.ValidationError("You must be a provider to view products.")
+        queryset = Product.objects.filter(provider=self.request.user, is_deleted=False)
+        if not queryset.exists():
+            raise serializers.ValidationError("This provider does not have any products.")
+        return queryset
+
+class PackageListAPIView(generics.ListAPIView):
+    serializer_class = PackageSerializer
+    pagination_class = ProductPagination
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
+    filterset_class = PackageFilter
+    search_fields = ['name', 'products__name']
+    ordering_fields = ['name', 'id', 'total_price']
+    queryset = Package.objects.all()

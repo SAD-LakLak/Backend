@@ -3,9 +3,7 @@ from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.conf import settings
-from django.db.models import Sum
 from datetime import timedelta
-
 
 
 class CustomUser(AbstractUser):
@@ -29,6 +27,7 @@ class PasswordRecoveryRequest(models.Model):
 
     def has_expired(self):
         return self.date_created < timezone.now() - timedelta(minutes=settings.EMAIL_REQUEST_TTL)
+
 
 class Product(models.Model):
     TYPE_CHOICES = (
@@ -62,9 +61,11 @@ class Product(models.Model):
         blank=True,
     )
 
+
 class ProductImage(models.Model):
     image = models.ImageField(upload_to='product_images/')
     product = models.ForeignKey(Product, related_name='product_images', on_delete=models.CASCADE)
+
 
 class Package(models.Model):
     AGE_GROUPS = (
