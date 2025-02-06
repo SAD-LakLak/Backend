@@ -1,6 +1,6 @@
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
-from .models import Product, ProductImage, CustomUser
+from .models import Product, ProductImage, CustomUser, Package
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -50,4 +50,26 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'type', 'name', 'info', 'price', 'stock', 'product_images']
+        fields = ['id', 'type', 'name', 'info', 'price', 'stock', 'is_active', 'product_images']
+
+class PackageSerializer(serializers.ModelSerializer):
+    score = serializers.SerializerMethodField()
+    stock = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Package
+        fields = [
+            'name', 'summary', 'description',
+            'total_price', 'image', 'products', 'is_active',
+            'target_group', 'creation_date', 'score', 'stock',
+        ]
+    
+    def get_score(self, package):
+        if package.score_count == 0:
+            return "-1"
+        return f"{(package.score_sum / package.score_count) : .2f}"
+    
+    def get_stock(self, package):
+        minstock_product = package.products.order_by("stock")[0]
+        return minstock_product.stock
+    
