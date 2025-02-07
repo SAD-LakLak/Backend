@@ -68,6 +68,22 @@ class ProductImage(models.Model):
 
 
 class Package(models.Model):
+    AGE_GROUPS = (
+        ('pregnants', 'Pregnant Mothers'),
+        ('less_6', 'Infants to 6 Months'),
+        ('less_12', 'Infants to One Year'),
+        ('less_24', 'Infants to Two Years'),
+    )
     name = models.CharField(max_length=255)
     products = models.ManyToManyField(Product, related_name='packages')
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    image = models.ImageField(upload_to='package_images/', null=True)
+    is_active = models.BooleanField(default=True)
+    summary = models.CharField(max_length=255, blank=True)
+    description = models.TextField(blank=True)
+    target_group = models.CharField(choices=AGE_GROUPS, null=True)
+    creation_date = models.DateTimeField(auto_now_add=True)
+    last_modification = models.DateTimeField(auto_now=True)
+    score_sum = models.BigIntegerField(default=0)
+    score_count = models.IntegerField(default=0)
+
