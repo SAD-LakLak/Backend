@@ -1,5 +1,5 @@
 from django.db import models
-from core.models import CustomUser
+from core.models import CustomUser, CustomerOrder
 from django.db import models
 
 class Ticket(models.Model):
@@ -28,7 +28,7 @@ class Ticket(models.Model):
     status = models.CharField(max_length=20, choices=TicketStatus.choices, default=TicketStatus.OPEN)
     priority = models.CharField(max_length=10, choices=TicketPriority.choices, default=TicketPriority.MEDIUM)
 
-    order = models.ForeignKey('shop.Order', on_delete=models.SET_NULL, null=True, blank=True, related_name="tickets")
+    order = models.ForeignKey(CustomerOrder, on_delete=models.SET_NULL, null=True, blank=True, related_name="tickets")
     assigned_to = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_tickets")
 
     created_at = models.DateTimeField(auto_now_add=True)
