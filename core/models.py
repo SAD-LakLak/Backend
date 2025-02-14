@@ -87,3 +87,76 @@ class Package(models.Model):
     score_sum = models.BigIntegerField(default=0)
     score_count = models.IntegerField(default=0)
 
+class Discount(models.Model):
+    DISCOUNT_TYPES = (
+        ('percent', 'Pencent Discount'),
+        ('fixed', 'Fixed Discount')
+    )
+    code = models.CharField(max_length=50)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    is_used = models.BooleanField(default=False)
+    type = models.CharField(max_length=10, choices=DISCOUNT_TYPES)
+
+from django.db import models
+from django.contrib.auth import get_user_model
+
+class Address(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='addresses')
+    address_line_1 = models.CharField(max_length=255)
+    address_line_2 = models.CharField(max_length=255, blank=True, null=True)
+    city = models.CharField(max_length=100)
+    state = models.CharField(max_length=100)
+    postal_code = models.CharField(max_length=20)
+    country = models.CharField(max_length=100)
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+    is_default = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.address_type} Address - {self.city}, {self.state}"
+
+    class Meta:
+        unique_together = ('user', 'is_default')  # Only one default address of each type
+
+
+
+class CustomerOrder(models.Model):
+    class OrderStatus(models.TextChoices):
+        PENDING = 'Pending', 'Pending'
+        PROCESSING = 'Processing', 'Processing'
+        SHIPPED = 'Shipped', 'Shipped'
+        DELIVERED = 'Delivered', 'Delivered'
+        CANCELLED = 'Cancelled', 'Cancelled'
+        RETURNED = 'Returned', 'Returned'
+
+    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name="orders")
+    order_status = models.CharField(max_length=20, choices=OrderStatus.choices, default=OrderStatus.PENDING)
+    order_date = models.DateTimeField(auto_now_add=True)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    tax_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    shipping_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    expected_delivery_date_time = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    note = models.TextField(blank=True, null=True)
+
+    discount = models.ForeignKey('Discount', on_delete=models.SET_NULL, null=True, blank=True)
+    address = models.ForeignKey('Address', on_delete=models.CASCADE)
+
+    packages = models.ManyToManyField('Package', through='OrderPackage')
+    is_deleted = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Order {self.id} - {self.user}"
+
+class OrderPackage(models.Model):
+    order = models.ForeignKey(CustomerOrder, on_delete=models.CASCADE)
+    package = models.ForeignKey('Package', on_delete=models.CASCADE)
+    amount = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        unique_together = ('order', 'package')
+
+    def __str__(self):
+        return f"{self.amount}x {self.package} in Order {self.order.id}"
