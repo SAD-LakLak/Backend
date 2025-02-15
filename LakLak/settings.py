@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'django_filters',
     'drf_yasg',
     'core',
+    'ticketing'
 ]
 
 REST_FRAMEWORK = {
