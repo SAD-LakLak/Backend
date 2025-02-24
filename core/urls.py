@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 from core import views
 from .serializers import CustomTokenObtainPairSerializer
 from rest_framework_simplejwt.views import (
@@ -24,4 +24,5 @@ urlpatterns = [
     path('products/delete/<int:product_id>/', views.delete_product, name='product-delete'),
     path('products/', views.ProductListAPIView.as_view(), name='product-list'),
     path('packages/', views.PackageListAPIView.as_view(), name='package-list'),
+    path('', include('ticketing.urls')),
 ]
