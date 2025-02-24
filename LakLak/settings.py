@@ -14,11 +14,8 @@ import os
 from pathlib import Path
 from decouple import Config, RepositoryEnv
 
-
 DOTENV_FILE = '.env'
 config = Config(RepositoryEnv(DOTENV_FILE))
-
-
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -34,7 +31,7 @@ DEBUG = True
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '5.34.203.201']
 AUTH_USER_MODEL = 'core.CustomUser'
 
 # Application definition
@@ -60,7 +57,6 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
 }
-
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
