@@ -5,7 +5,6 @@ from django.shortcuts import get_object_or_404
 from django.conf import settings
 from django.utils.crypto import get_random_string
 from django.urls import reverse
-from django.db.models import F
 from rest_framework.permissions import AllowAny
 from rest_framework import generics, status, filters
 from rest_framework.response import Response
@@ -20,7 +19,7 @@ from .serializers import CustomUserSerializer, PackageSerializer
 from core.pagination import ProductPagination
 from core.filters import ProductFilter, PackageFilter
 from core.permissions import *
-from django.db.models import F, Sum
+from django.db.models import F, Sum, Case, When, Value, FloatField
 
 
 class RegistrationView(generics.CreateAPIView):
@@ -308,5 +307,15 @@ class PackageListAPIView(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
     filterset_class = PackageFilter
     search_fields = ['name', 'products__name']
-    ordering_fields = ['name', 'id', 'total_price']
-    queryset = Package.objects.all()
+    ordering_fields = ['name', 'id', 'total_price', 'creation_date', 'score_sum']
+    
+    def get_queryset(self):
+        queryset = Package.objects.all()
+        queryset = queryset.annotate(
+            score=Case(
+                When(score_count=0, then=Value(-1)),
+                default=F('score_sum') * 1.0 / F('score_count'),
+                output_field=FloatField(),
+            )
+        )
+        return queryset

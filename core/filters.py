@@ -16,7 +16,16 @@ class ProductFilter(django_filters.FilterSet):
 class PackageFilter(django_filters.FilterSet):
     min_total_price = django_filters.NumberFilter(field_name="total_price", lookup_expr='gte')
     max_total_price = django_filters.NumberFilter(field_name="total_price", lookup_expr='lte')
+    target_group = django_filters.MultipleChoiceFilter(
+        choices=Package.AGE_GROUPS,
+        method='filter_target_group'
+    )
+
+    def filter_target_group(self, queryset, name, value):
+        if value:
+            return queryset.filter(target_group__in=value)
+        return queryset
 
     class Meta:
         model = Package
-        fields = ['name', 'total_price']
+        fields = ['name', 'total_price', 'target_group']
