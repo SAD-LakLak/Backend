@@ -13,14 +13,29 @@ jobs:
       - name: Check Codes
         uses: actions/checkout@v3
 
-      - name: Install sshpass
-        run: sudo apt-get install -y sshpass
+      - name: Connection Diagnostics
+        run: |
+          # Get our current IP
+          echo "GitHub Actions IP:"
+          curl -s https://api.ipify.org
+          
+          # Try to telnet to the port
+          echo "Testing raw TCP connection..."
+          timeout 10 nc -zv ${{ secrets.SSH_HOST }} 22
+          
+          # Try traceroute
+          echo "Running traceroute..."
+          traceroute ${{ secrets.SSH_HOST }}
+          
+          # More verbose SSH attempt
+          echo "Attempting SSH connection with verbose output..."
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -v -o StrictHostKeyChecking=no -o ConnectTimeout=30 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'echo "Connection successful"'
 
-      - name: Deploy
+      - name: Deploy if connection succeeds
+        if: success()
         env:
           SSH_PASS: ${{ secrets.SSH_PASSWORD }}
         run: |
-          echo "Testing SSH connection..."
           sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} '
             cd ~/Backend && \
             git pull && \
