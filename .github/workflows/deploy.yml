@@ -13,16 +13,30 @@ jobs:
       - name: Check Codes
         uses: actions/checkout@v3
 
-      - name: Test SSH connection
-        run: ssh -i ${{ secrets.SSH_KEY }} -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} hostname
+      - name: Setup SSH and Debug
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Enable SSH debugging
+          echo "Setting up SSH debugging..."
+          echo "Host *" > ~/.ssh/config
+          echo "  LogLevel DEBUG3" >> ~/.ssh/config
+          echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+          echo "  UserKnownHostsFile=/dev/null" >> ~/.ssh/config
+          
+      - name: Test SSH connection with verbose output
+        run: |
+          echo "Testing SSH connection..."
+          ssh -v -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "echo 'Connection successful'"
 
       - name: SSH and Deploy
+        if: success()
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          password: ${{ secrets.SSH_PASSWORD }}
           script: |
             cd ~/Backend  
             git pull
