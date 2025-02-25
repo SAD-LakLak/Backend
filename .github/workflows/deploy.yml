@@ -13,6 +13,9 @@ jobs:
       - name: Check Codes
         uses: actions/checkout@v3
 
+      - name: Test SSH connection
+        run: ssh -i ${{ secrets.SSH_KEY }} -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} hostname
+
       - name: SSH and Deploy
         uses: appleboy/ssh-action@master
         with:
