@@ -13,40 +13,41 @@ jobs:
       - name: Check Codes
         uses: actions/checkout@v3
 
-      - name: Advanced Connection Test
+      - name: Setup SSH tunnel
         run: |
-          echo "Current IP: $(curl -s https://api.ipify.org)"
-          echo "Testing TCP connection..."
-          
-          # Try basic TCP connection with netcat
-          echo "NC test with timeout 5:"
-          nc -zvw5 ${{ secrets.SSH_HOST }} 22
-          
-          # Try multiple connection methods
-          echo "Testing SSH connection methods..."
-          
-          # Method 1: Direct sshpass
-          echo "Method 1: sshpass"
-          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'echo "test1"' || echo "Method 1 failed"
-          
-          # Method 2: Using different SSH options
-          echo "Method 2: Custom SSH options"
-          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh \
-            -o ConnectTimeout=10 \
-            -o StrictHostKeyChecking=no \
-            -o PreferredAuthentications=password \
-            -o PubkeyAuthentication=no \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'echo "test2"' || echo "Method 2 failed"
+          # Install sshpass and netcat
+          sudo apt-get install -y sshpass netcat-openbsd
 
-      - name: Deploy if connection succeeds
+          # Create SSH config
+          mkdir -p ~/.ssh
+          echo "Host target
+            HostName ${{ secrets.SSH_HOST }}
+            User ${{ secrets.SSH_USER }}
+            Port 22
+            StrictHostKeyChecking no
+            UserKnownHostsFile=/dev/null
+            ServerAliveInterval 60
+            ServerAliveCountMax 10
+            ConnectTimeout 180" > ~/.ssh/config
+            
+          # Test connection with debug output
+          echo "Testing connection with debug..."
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -v target "echo 'Connection test'"
+
+      - name: Deploy
         if: success()
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          script: |
-            cd ~/Backend  
+        env:
+          DEPLOY_CMD: |
+            cd ~/Backend
             git pull
-            sudo docker-compose down 
+            sudo docker-compose down
             sudo docker-compose up --build -d
+        run: |
+          # Try multiple times with increasing delays
+          for i in 1 2 3; do
+            echo "Attempt $i..."
+            sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -v target "${DEPLOY_CMD}" && break || {
+              echo "Attempt $i failed. Waiting..."
+              sleep $((i * 10))
+            }
+          done
