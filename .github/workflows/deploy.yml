@@ -13,41 +13,28 @@ jobs:
       - name: Check Codes
         uses: actions/checkout@v3
 
-      - name: Setup SSH tunnel
+      - name: Network Diagnostics
         run: |
-          # Install sshpass and netcat
-          sudo apt-get install -y sshpass netcat-openbsd
-
-          # Create SSH config
-          mkdir -p ~/.ssh
-          echo "Host target
-            HostName ${{ secrets.SSH_HOST }}
-            User ${{ secrets.SSH_USER }}
-            Port 22
-            StrictHostKeyChecking no
-            UserKnownHostsFile=/dev/null
-            ServerAliveInterval 60
-            ServerAliveCountMax 10
-            ConnectTimeout 180" > ~/.ssh/config
-            
-          # Test connection with debug output
-          echo "Testing connection with debug..."
-          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -v target "echo 'Connection test'"
-
-      - name: Deploy
-        if: success()
-        env:
-          DEPLOY_CMD: |
-            cd ~/Backend
-            git pull
-            sudo docker-compose down
-            sudo docker-compose up --build -d
-        run: |
-          # Try multiple times with increasing delays
-          for i in 1 2 3; do
-            echo "Attempt $i..."
-            sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -v target "${DEPLOY_CMD}" && break || {
-              echo "Attempt $i failed. Waiting..."
-              sleep $((i * 10))
-            }
+          echo "Running network diagnostics..."
+          echo "Current IP: $(curl -s https://api.ipify.org)"
+          
+          # Try various timeout values
+          for timeout in 5 10 30; do
+            echo "Testing connection with ${timeout}s timeout..."
+            nc -zv -w $timeout ${{ secrets.SSH_HOST }} 22 && break || echo "Failed with ${timeout}s timeout"
+            sleep 2
           done
+
+      - name: Deploy with alternative method
+        if: success()
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          command_timeout: "20m"
+          script: |
+            cd ~/Backend  
+            git pull
+            sudo docker-compose down 
+            sudo docker-compose up --build -d
