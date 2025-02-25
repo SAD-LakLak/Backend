@@ -13,29 +13,17 @@ jobs:
       - name: Check Codes
         uses: actions/checkout@v3
 
-      - name: Network Diagnostics
-        run: |
-          echo "Testing connection to server..."
-          echo "Running nslookup..."
-          nslookup ${{ secrets.SSH_HOST }}
-          
-          echo "Running ping test..."
-          ping -c 4 ${{ secrets.SSH_HOST }}
-          
-          echo "Testing port 22..."
-          nc -zv -w 5 ${{ secrets.SSH_HOST }} 22
+      - name: Install sshpass
+        run: sudo apt-get install -y sshpass
 
-      - name: SSH and Deploy
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: 22
-          timeout: 60s # Increased timeout
-          command_timeout: 20m # Increased command timeout
-          script: |
-            cd ~/Backend  
-            git pull
-            sudo docker-compose down 
+      - name: Deploy
+        env:
+          SSH_PASS: ${{ secrets.SSH_PASSWORD }}
+        run: |
+          echo "Testing SSH connection..."
+          sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} '
+            cd ~/Backend && \
+            git pull && \
+            sudo docker-compose down && \
             sudo docker-compose up --build -d
+          '
