@@ -13,32 +13,40 @@ jobs:
       - name: Check Codes
         uses: actions/checkout@v3
 
-      - name: Connection Diagnostics
+      - name: Advanced Connection Test
         run: |
-          # Get our current IP
-          echo "GitHub Actions IP:"
-          curl -s https://api.ipify.org
+          echo "Current IP: $(curl -s https://api.ipify.org)"
+          echo "Testing TCP connection..."
           
-          # Try to telnet to the port
-          echo "Testing raw TCP connection..."
-          timeout 10 nc -zv ${{ secrets.SSH_HOST }} 22
+          # Try basic TCP connection with netcat
+          echo "NC test with timeout 5:"
+          nc -zvw5 ${{ secrets.SSH_HOST }} 22
           
-          # Try traceroute
-          echo "Running traceroute..."
-          traceroute ${{ secrets.SSH_HOST }}
+          # Try multiple connection methods
+          echo "Testing SSH connection methods..."
           
-          # More verbose SSH attempt
-          echo "Attempting SSH connection with verbose output..."
-          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -v -o StrictHostKeyChecking=no -o ConnectTimeout=30 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'echo "Connection successful"'
+          # Method 1: Direct sshpass
+          echo "Method 1: sshpass"
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'echo "test1"' || echo "Method 1 failed"
+          
+          # Method 2: Using different SSH options
+          echo "Method 2: Custom SSH options"
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh \
+            -o ConnectTimeout=10 \
+            -o StrictHostKeyChecking=no \
+            -o PreferredAuthentications=password \
+            -o PubkeyAuthentication=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'echo "test2"' || echo "Method 2 failed"
 
       - name: Deploy if connection succeeds
         if: success()
-        env:
-          SSH_PASS: ${{ secrets.SSH_PASSWORD }}
-        run: |
-          sshpass -p "$SSH_PASS" ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} '
-            cd ~/Backend && \
-            git pull && \
-            sudo docker-compose down && \
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            cd ~/Backend  
+            git pull
+            sudo docker-compose down 
             sudo docker-compose up --build -d
-          '
