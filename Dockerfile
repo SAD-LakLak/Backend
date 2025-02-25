@@ -15,4 +15,4 @@ EXPOSE 8000
 
 RUN ["chmod", "+x", "./docker-entrypoint.sh"]
 
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
