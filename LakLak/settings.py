@@ -30,7 +30,11 @@ SECRET_KEY = 'django-insecure-)%!=4d4d^2js&*vtgpj&hh1qnethb_8ze92da4@22!l71$6yj4
 DEBUG = True
 
 CORS_ALLOW_ALL_ORIGINS = True
-
+CSRF_TRUSTED_ORIGINS = [
+    'https://api.laklakbox.ir',
+    'https://*.laklakbox.ir',  
+    'https://laklakbox.ir',  
+]
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '5.34.203.201','213.233.184.204','api.laklakbox.ir','*.laklakbox.ir']
 AUTH_USER_MODEL = 'core.CustomUser'
 
