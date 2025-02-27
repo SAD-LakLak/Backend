@@ -13,14 +13,16 @@ jobs:
       - name: Check Codes
         uses: actions/checkout@v3
 
-      - name: SSH and Deploy
+      - name: ssh and deploy
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
+          key: ${{ secrets.SSH_KEY }}
           script: |
             cd ~/Backend  
             git pull
+            docker-compose down 
+            docker-compose up --build -d 
             sudo docker-compose down 
-            sudo docker-compose up --build -d
+            sudo docker-compose up --build -d 
