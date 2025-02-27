@@ -1,6 +1,6 @@
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
-from .models import Product, ProductImage, CustomUser, Package
+from .models import Product, ProductImage, CustomUser, Package, Address
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -73,3 +73,8 @@ class PackageSerializer(serializers.ModelSerializer):
         minstock_product = package.products.order_by("stock")[0]
         return minstock_product.stock
     
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = '__all__'
+        extra_kwargs = {'user': {'read_only': True}}  # Make 'user' read-only

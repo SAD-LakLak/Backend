@@ -14,12 +14,13 @@ from rest_framework import filters, serializers
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from core.serializers import ProductSerializer
-from core.models import Product, ProductImage, PasswordRecoveryRequest, CustomUser, Package
-from .serializers import CustomUserSerializer, PackageSerializer
+from core.models import Product, ProductImage, PasswordRecoveryRequest, CustomUser, Package, Address
+from .serializers import CustomUserSerializer, PackageSerializer, AddressSerializer, CustomTokenObtainPairSerializer
 from core.pagination import ProductPagination
 from core.filters import ProductFilter, PackageFilter
 from core.permissions import *
 from django.db.models import F, Sum, Case, When, Value, FloatField
+from django.http import Http404
 
 
 class RegistrationView(generics.CreateAPIView):
@@ -319,3 +320,47 @@ class PackageListAPIView(generics.ListAPIView):
             )
         )
         return queryset
+
+
+class AddressListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        addresses = Address.objects.filter(user=request.user)  # Filter by user
+        serializer = AddressSerializer(addresses, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = AddressSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)  # Save with the logged-in user
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AddressDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, pk):
+        try:
+            return Address.objects.get(pk=pk, user=self.request.user)  # Ensure address belongs to the user
+        except Address.DoesNotExist:
+            raise Http404  
+
+    def get(self, request, pk):
+        address = self.get_object(pk)
+        serializer = AddressSerializer(address)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        address = self.get_object(pk)
+        serializer = AddressSerializer(address, data=request.data, partial=True)  # Allow partial updates
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        address = self.get_object(pk)
+        address.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
