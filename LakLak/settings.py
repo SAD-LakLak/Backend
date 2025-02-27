@@ -31,7 +31,7 @@ DEBUG = True
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '5.34.203.201','213.233.184.204']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '5.34.203.201','213.233.184.204','api.laklakbox.ir','*.laklakbox.ir']
 AUTH_USER_MODEL = 'core.CustomUser'
 
 # Application definition
