@@ -55,11 +55,12 @@ class ProductSerializer(serializers.ModelSerializer):
 class PackageSerializer(serializers.ModelSerializer):
     score = serializers.SerializerMethodField()
     stock = serializers.SerializerMethodField()
+    products = serializers.SerializerMethodField()
 
     class Meta:
         model = Package
         fields = [
-            'name', 'summary', 'description',
+            'id', 'name', 'summary', 'description',
             'total_price', 'image', 'products', 'is_active',
             'target_group', 'creation_date', 'score', 'stock',
         ]
@@ -73,8 +74,12 @@ class PackageSerializer(serializers.ModelSerializer):
         minstock_product = package.products.order_by("stock")[0]
         return minstock_product.stock
     
+    def get_products(self, package):
+        return [product.name for product in package.products.all()]
+    
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
         fields = '__all__'
         extra_kwargs = {'user': {'read_only': True}}  # Make 'user' read-only
+    
