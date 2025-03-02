@@ -1,0 +1,98 @@
+{% extends "inventory/report_base.html" %} {% block content %}
+<div class="report-section">
+  <div class="section-title">Low Stock Summary</div>
+  <div class="summary-box">
+    <div class="summary-item">
+      <span class="summary-label">Low Stock Threshold:</span>
+      <span>{{ threshold }} units</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">Total Low Stock Products:</span>
+      <span class="warning">{{ low_stock_products|length }}</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">Out of Stock Products:</span>
+      <span class="warning">{{ out_of_stock }}</span>
+    </div>
+  </div>
+</div>
+
+<div class="report-section">
+  <div class="section-title">Stock Level Distribution</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Stock Level</th>
+        <th>Number of Products</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for level in stock_levels %}
+      <tr>
+        <td>
+          {% if level.stock == 0 %}
+          <span class="warning">Out of Stock (0)</span>
+          {% else %} {{ level.stock }} units {% endif %}
+        </td>
+        <td>{{ level.count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="report-section">
+  <div class="section-title">Low Stock Products</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Product Name</th>
+        <th>SKU</th>
+        <th>Type</th>
+        <th>Current Stock</th>
+        <th>Status</th>
+        <th>Provider</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for product in low_stock_products %}
+      <tr>
+        <td>{{ product.name }}</td>
+        <td>{{ product.sku }}</td>
+        <td>{{ product.type }}</td>
+        <td>
+          {% if product.stock == 0 %}
+          <span class="warning">Out of Stock (0)</span>
+          {% else %}
+          <span class="info">{{ product.stock }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if product.is_active %}
+          <span class="success">Active</span>
+          {% else %}
+          <span class="warning">Inactive</span>
+          {% endif %}
+        </td>
+        <td>{{ product.provider.username }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="report-section">
+  <div class="section-title">Recommended Actions</div>
+  <ul>
+    <li>
+      Contact suppliers for products that are out of stock or critically low.
+    </li>
+    <li>Review sales patterns to adjust reorder points if necessary.</li>
+    <li>
+      Consider temporarily marking products as inactive if they will be
+      unavailable for an extended period.
+    </li>
+    <li>Check for any quality issues that might be affecting stock levels.</li>
+  </ul>
+</div>
+{% endblock %}

@@ -1,3 +1,5 @@
+import json
+import logging
 from json import loads as parse_json
 from django.contrib.auth import get_user_model, logout
 from django.core.mail import send_mail
@@ -24,6 +26,16 @@ from core.permissions import *
 from django.db.models import F, Sum, Case, When, Value, FloatField
 from django.http import Http404
 
+logger = logging.getLogger(__name__)
+
+try:
+    from inventory.kafka_utils import (
+        send_inventory_update, send_price_change_event,
+        send_product_created_event, send_product_deleted_event
+    )
+    KAFKA_AVAILABLE = True
+except ImportError:
+    KAFKA_AVAILABLE = False
 
 class RegistrationView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
@@ -124,6 +136,20 @@ def register_new_product(request):
         new_product = Product.objects.create(
             type=type, name=name, info=info, is_active=True, price=price, stock=stock, provider=provider
         )
+        
+        if KAFKA_AVAILABLE:
+            try:
+                product_data = {
+                    'name': new_product.name,
+                    'type': new_product.type,
+                    'price': new_product.price,
+                    'stock': new_product.stock,
+                    'provider_id': new_product.provider_id
+                }
+                send_product_created_event(new_product.id, product_data, request.user.id)
+            except Exception as e:
+                logger.error(f"Failed to send product created event: {str(e)}")
+        
         return Response({"success" : "true", "id" : new_product.id})
     except Exception as e:
         return failure_response("server error: " + str(e))
@@ -138,6 +164,10 @@ def update_product(request):
     if data.get('id', None) is None:
         return failure_response("id not provided")
     product = get_object_or_404(Product, pk=data['id'])
+    
+    old_price = product.price
+    old_stock = product.stock
+    
     for field, new_value in data.items():
         if field == 'id':
             continue
@@ -177,9 +207,21 @@ def update_product(request):
             return failure_response('unsupported field for change: ' + field)
     try:
         product.save()
+        
+        if KAFKA_AVAILABLE:
+            try:
+                if old_price != product.price:
+                    send_price_change_event(product.id, old_price, product.price, request.user.id)
+                
+                if old_stock != product.stock:
+                    send_inventory_update(product.id, old_stock, product.stock, request.user.id)
+            except Exception as e:
+                logger.error(f"Failed to send product update events: {str(e)}")
+        
         return Response({"success" : "true"})
     except:
         return failure_response("server error", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @api_view(['POST'])
 @permission_classes([IsSupplier])
@@ -216,6 +258,19 @@ def delete_product(request, product_id):
     except:
         return failure_response("no such object exists", status=status.HTTP_404_NOT_FOUND)
     try:
+        if KAFKA_AVAILABLE:
+            try:
+                product_data = {
+                    'name': product.name,
+                    'type': product.type,
+                    'price': product.price,
+                    'stock': product.stock,
+                    'provider_id': product.provider_id
+                }
+                send_product_deleted_event(product_id, product_data, request.user.id)
+            except Exception as e:
+                logger.error(f"Failed to send product deleted event: {str(e)}")
+        
         product.is_deleted = True
         product.save()
         return Response({"success" : "true"})
@@ -231,6 +286,10 @@ def bulk_stock_change(request):
     except Exception as e:
         return failure_response('not provided: ' + str(e))
     try:
+        products_before = None
+        if KAFKA_AVAILABLE:
+            products_before = list(Product.objects.filter(provider_id=provider_id).values('id', 'stock'))
+        
         if delta > 0:
             Product.objects.filter(provider_id=provider_id).update(stock=F("stock")+delta)
         else:
@@ -240,8 +299,25 @@ def bulk_stock_change(request):
             Product.objects\
                 .filter(provider_id=provider_id, stock__lte=-delta)\
                 .update(stock=0)
+        
+        if KAFKA_AVAILABLE and products_before:
+            products_after = list(Product.objects.filter(provider_id=provider_id).values('id', 'stock'))
+            products_after_dict = {p['id']: p['stock'] for p in products_after}
+            
+            for product in products_before:
+                product_id = product['id']
+                old_stock = product['stock']
+                new_stock = products_after_dict.get(product_id)
+                
+                if old_stock != new_stock:
+                    try:
+                        send_inventory_update(product_id, old_stock, new_stock, provider_id.id)
+                    except Exception as e:
+                        logger.error(f"Failed to send inventory update for product {product_id}: {str(e)}")
+        
         return Response({"success" : "true"})
-    except:
+    except Exception as e:
+        logger.error(f"Error in bulk_stock_change: {str(e)}")
         return failure_response('server error', status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
@@ -266,6 +342,10 @@ def granular_bulk_stock_change(request):
     except:
         return failure_response('invalid delta')
     try:
+        products_before = None
+        if KAFKA_AVAILABLE:
+            products_before = list(Product.objects.filter(pk__in=product_ids, provider=provider).values('id', 'stock'))
+        
         if (delta > 0):
             Product.objects\
                 .filter(pk__in=product_ids, provider=provider)\
@@ -277,8 +357,25 @@ def granular_bulk_stock_change(request):
             Product.objects\
             .filter(pk__in=product_ids, provider=provider, stock__lte=-delta)\
             .update(stock=0)
+        
+        if KAFKA_AVAILABLE and products_before:
+            products_after = list(Product.objects.filter(pk__in=product_ids, provider=provider).values('id', 'stock'))
+            products_after_dict = {p['id']: p['stock'] for p in products_after}
+            
+            for product in products_before:
+                product_id = product['id']
+                old_stock = product['stock']
+                new_stock = products_after_dict.get(product_id)
+                
+                if old_stock != new_stock:
+                    try:
+                        send_inventory_update(product_id, old_stock, new_stock, provider.id)
+                    except Exception as e:
+                        logger.error(f"Failed to send inventory update for product {product_id}: {str(e)}")
+        
         return Response({"success" : "true"})
-    except:
+    except Exception as e:
+        logger.error(f"Error in granular_bulk_stock_change: {str(e)}")
         return failure_response('server error', status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     

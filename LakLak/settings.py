@@ -53,7 +53,8 @@ INSTALLED_APPS = [
     'django_filters',
     'drf_yasg',
     'core',
-    'ticketing'
+    'ticketing',
+    'inventory'
 ]
 
 REST_FRAMEWORK = {
@@ -171,3 +172,16 @@ EMAIL_REQUEST_TTL = 20  # Duration in which the reset link is valid (in minutes)
 # Media Settings
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Kafka Configuration
+KAFKA_BOOTSTRAP_SERVERS = ['localhost:9092']
+KAFKA_TOPICS = {
+    'INVENTORY_UPDATES': 'inventory-updates',
+    'LOW_STOCK_ALERTS': 'low-stock-alerts',
+    'PRODUCT_PRICE_CHANGES': 'product-price-changes',
+    'PRODUCT_CREATED': 'product-created',
+    'PRODUCT_DELETED': 'product-deleted'
+}
+
+# Stock threshold for low stock alerts
+LOW_STOCK_THRESHOLD = int(os.environ.get('LOW_STOCK_THRESHOLD', 10))

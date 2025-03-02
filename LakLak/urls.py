@@ -29,6 +29,8 @@ urlpatterns = [
 urlpatterns += [
     path('admin/', admin.site.urls),
     path('api/', include('core.urls')),
+    path('api/ticketing/', include('ticketing.urls')),
+    path('api/inventory/', include('inventory.urls')),
 ]
 
 if settings.DEBUG:

@@ -1,0 +1,89 @@
+{% extends "inventory/report_base.html" %} {% block content %}
+<div class="report-section">
+  <div class="section-title">Transaction Summary</div>
+  <div class="summary-box">
+    {% for summary in transaction_summary %}
+    <div class="summary-item">
+      <span class="summary-label">{{ summary.transaction_type|title }}:</span>
+      <span
+        >{{ summary.count }} transactions ({{ summary.total_quantity }}
+        items)</span
+      >
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="report-section">
+  <div class="section-title">Product Transaction Summary</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Total Transactions</th>
+        <th>Total Quantity</th>
+        <th>Additions</th>
+        <th>Removals</th>
+        <th>Net Change</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for product in product_transactions %}
+      <tr>
+        <td>{{ product.product__name }}</td>
+        <td>{{ product.count }}</td>
+        <td>{{ product.total_quantity }}</td>
+        <td class="success">+{{ product.additions }}</td>
+        <td class="warning">-{{ product.removals }}</td>
+        <td>
+          {% with net=product.additions|add:"-"|add:product.removals %} {% if
+          net > 0 %}
+          <span class="success">+{{ net }}</span>
+          {% elif net < 0 %}
+          <span class="warning">{{ net }}</span>
+          {% else %}
+          <span>0</span>
+          {% endif %} {% endwith %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="report-section">
+  <div class="section-title">Transaction Details</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Product</th>
+        <th>Type</th>
+        <th>Quantity</th>
+        <th>Reason</th>
+        <th>User</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for transaction in transactions %}
+      <tr>
+        <td>{{ transaction.timestamp|date:"Y-m-d H:i" }}</td>
+        <td>{{ transaction.product.name }}</td>
+        <td>
+          {% if transaction.transaction_type == 'add' %}
+          <span class="success">Addition</span>
+          {% elif transaction.transaction_type == 'remove' %}
+          <span class="warning">Removal</span>
+          {% else %}
+          <span>{{ transaction.transaction_type|title }}</span>
+          {% endif %}
+        </td>
+        <td>{{ transaction.quantity }}</td>
+        <td>{{ transaction.reason }}</td>
+        <td>{{ transaction.user.username }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "inventory/report_base.html" %} {% block content %}
+<div class="report-section">
+  <div class="section-title">Inventory Summary</div>
+  <div class="summary-box">
+    <div class="summary-item">
+      <span class="summary-label">Total Products:</span>
+      <span>{{ inventory_summary.total_products }}</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">Active Products:</span>
+      <span>{{ inventory_summary.active_products }}</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">Low Stock Products:</span>
+      <span class="warning">{{ inventory_summary.low_stock_products }}</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">Out of Stock Products:</span>
+      <span class="warning">{{ inventory_summary.out_of_stock_products }}</span>
+    </div>
+  </div>
+</div>
+
+<div class="report-section">
+  <div class="section-title">Product Types</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Product Type</th>
+        <th>Count</th>
+        <th>Total Stock</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for type in product_types %}
+      <tr>
+        <td>{{ type.type }}</td>
+        <td>{{ type.count }}</td>
+        <td>{{ type.total_stock }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="report-section">
+  <div class="section-title">Inventory Details</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Product Name</th>
+        <th>SKU</th>
+        <th>Type</th>
+        <th>Stock</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for product in products %}
+      <tr>
+        <td>{{ product.name }}</td>
+        <td>{{ product.sku }}</td>
+        <td>{{ product.type }}</td>
+        <td>
+          {% if product.stock <= 0 %}
+          <span class="warning">{{ product.stock }}</span>
+          {% elif product.stock <= 10 %}
+          <span class="info">{{ product.stock }}</span>
+          {% else %}
+          <span class="success">{{ product.stock }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if product.is_active %}
+          <span class="success">Active</span>
+          {% else %}
+          <span class="warning">Inactive</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
