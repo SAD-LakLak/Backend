@@ -14,6 +14,8 @@ from rest_framework import filters, serializers
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from core.serializers import ProductSerializer
+from core import serializers
+from core import models
 from core.models import Product, ProductImage, PasswordRecoveryRequest, CustomUser, Package, Address
 from .serializers import CustomUserSerializer, PackageSerializer, AddressSerializer, CustomTokenObtainPairSerializer
 from core.pagination import ProductPagination
@@ -364,3 +366,18 @@ class AddressDetailView(APIView):
         address = self.get_object(pk)
         address.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class CreateCustomerOrderView(generics.CreateAPIView):
+    serializer_class = serializers.CustomerOrderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer_class):
+        serializer_class.save(user=self.request.user)  # Assign current user to order
+
+
+class UserOrderHistoryView(generics.ListAPIView):
+    serializer_class = serializers.CustomerOrderHistorySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return models.CustomerOrder.objects.filter(user=self.request.user).order_by('-order_date')

@@ -133,7 +133,6 @@ class CustomerOrder(models.Model):
     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name="orders")
     order_status = models.CharField(max_length=20, choices=OrderStatus.choices, default=OrderStatus.PENDING)
     order_date = models.DateTimeField(auto_now_add=True)
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     tax_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     shipping_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
@@ -153,7 +152,9 @@ class CustomerOrder(models.Model):
 class OrderPackage(models.Model):
     order = models.ForeignKey(CustomerOrder, on_delete=models.CASCADE)
     package = models.ForeignKey('Package', on_delete=models.CASCADE)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
     amount = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('order', 'package')

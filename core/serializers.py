@@ -1,6 +1,8 @@
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
+from core import models
 from .models import Product, ProductImage, CustomUser, Package, Address
+import core.models
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -83,3 +85,56 @@ class AddressSerializer(serializers.ModelSerializer):
         fields = '__all__'
         extra_kwargs = {'user': {'read_only': True}}  # Make 'user' read-only
     
+class OrderPackageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.OrderPackage
+        fields = ['package', 'amount', 'price']
+
+class CustomerOrderSerializer(serializers.ModelSerializer):
+    packages = OrderPackageSerializer(many=True, write_only=True)  # Nested for input
+    order_status = serializers.CharField(read_only=True)  # Customers can't set this manually
+
+    class Meta:
+        model = models.CustomerOrder
+        fields = [
+            'id', 'user', 'order_status', 'order_date',
+            'discount_amount', 'tax_amount', 'shipping_fee',
+            'expected_delivery_date_time', 'note', 'discount', 'address',
+            'packages'
+        ]
+        extra_kwargs = {'user': {'read_only':True}}
+
+    def create(self, validated_data):
+        packages_data = validated_data.pop('packages')
+        order = models.CustomerOrder.objects.create(**validated_data)
+
+        for package_data in packages_data:
+            package = package_data['package']
+            amount = package_data['amount']
+            price = package_data['price']
+            models.OrderPackage.objects.create(order=order, package=package, amount=amount, price=price)
+        order.save()
+
+        return order
+
+
+class OrderPackageDetailSerializer(serializers.ModelSerializer):
+    package_name = serializers.CharField(source="package.name", read_only=True)  # Assuming Package has a name field
+    package_price = serializers.DecimalField(source="package.price", max_digits=10, decimal_places=2, read_only=True)  # Assuming Package has a price field
+
+    class Meta:
+        model = models.OrderPackage
+        fields = ['package', 'package_name', 'package_price', 'amount']
+
+class CustomerOrderHistorySerializer(serializers.ModelSerializer):
+    packages = OrderPackageDetailSerializer(many=True, source='orderpackage_set')  # Retrieve related packages
+    order_status = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = models.CustomerOrder
+        fields = [
+            'id', 'order_status', 'order_date',
+            'discount_amount', 'tax_amount', 'shipping_fee',
+            'expected_delivery_date_time', 'note', 'address', 'packages'
+        ]
+

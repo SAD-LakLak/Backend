@@ -27,4 +27,6 @@ urlpatterns = [
     path('', include('ticketing.urls')),
     path('addresses/', views.AddressListView.as_view(), name='address-list'),
     path('addresses/<int:pk>/', views.AddressDetailView.as_view(), name='address-detail'),
+    path('orders/create/', views.CreateCustomerOrderView.as_view(), name='create-order'),
+    path('orders/history/', views.UserOrderHistoryView.as_view(), name='order-history'),
 ]
