@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.db import transaction
 from core.models import Product, CustomUser
 from inventory.models import InventoryTransaction, LowStockAlert, PriceChangeLog
-from inventory.kafka_utils import get_kafka_consumer
+from confluent_kafka import Consumer, KafkaError
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
@@ -50,39 +50,71 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.ERROR(f'Consumer error: {str(e)}'))
 
     def process_topic(self, topic):
-        consumer = get_kafka_consumer(topic, group_id=f'inventory-processor-{topic}')
-        
-        if not consumer:
-            self.stdout.write(self.style.ERROR(f'Failed to create consumer for topic: {topic}'))
-            return
-        
         try:
-            for message in consumer:
-                try:
-                    self.stdout.write(f'Processing message: {message.value}')
+            consumer_config = {
+                'bootstrap.servers': ','.join(settings.KAFKA_BOOTSTRAP_SERVERS),
+                'group.id': f'inventory-processor-{topic}',
+                'auto.offset.reset': 'earliest',
+                'enable.auto.commit': True,
+                'session.timeout.ms': 6000
+            }
+            
+            consumer = Consumer(consumer_config)
+            consumer.subscribe([topic])
+            
+            if not consumer:
+                self.stdout.write(self.style.ERROR(f'Failed to create consumer for topic: {topic}'))
+                return
+            
+            self.stdout.write(self.style.SUCCESS(f'Consumer started for topic: {topic}'))
+            running = True
+            
+            try:
+                while running:
+                    msg = consumer.poll(1.0)
                     
-                    if topic == settings.KAFKA_TOPICS['INVENTORY_UPDATES']:
-                        self.process_inventory_update(message.value)
-                    elif topic == settings.KAFKA_TOPICS['LOW_STOCK_ALERTS']:
-                        self.process_low_stock_alert(message.value)
-                    elif topic == settings.KAFKA_TOPICS['PRODUCT_PRICE_CHANGES']:
-                        self.process_price_change(message.value)
-                    elif topic == settings.KAFKA_TOPICS['PRODUCT_CREATED']:
-                        self.process_product_created(message.value)
-                    elif topic == settings.KAFKA_TOPICS['PRODUCT_DELETED']:
-                        self.process_product_deleted(message.value)
+                    if msg is None:
+                        continue
                     
-                except Exception as e:
-                    self.stdout.write(self.style.ERROR(f'Error processing message: {str(e)}'))
-                    logger.error(f'Error processing message: {str(e)}', exc_info=True)
-                
-                time.sleep(0.1)
-                
-        except KeyboardInterrupt:
-            self.stdout.write(self.style.WARNING('Stopping consumer due to keyboard interrupt'))
-        finally:
-            consumer.close()
-            self.stdout.write(self.style.SUCCESS(f'Consumer for topic {topic} closed'))
+                    if msg.error():
+                        if msg.error().code() == KafkaError._PARTITION_EOF:
+                            # End of partition event
+                            self.stdout.write(f'Reached end of topic {topic} partition {msg.partition()}')
+                        else:
+                            self.stdout.write(self.style.ERROR(f'Error: {msg.error()}'))
+                    else:
+                        try:
+                            # Parse the message value
+                            value = json.loads(msg.value().decode('utf-8'))
+                            self.stdout.write(f'Processing message: {value}')
+                            
+                            # Process the message based on the topic
+                            if topic == settings.KAFKA_TOPICS['INVENTORY_UPDATES']:
+                                self.process_inventory_update(value)
+                            elif topic == settings.KAFKA_TOPICS['LOW_STOCK_ALERTS']:
+                                self.process_low_stock_alert(value)
+                            elif topic == settings.KAFKA_TOPICS['PRODUCT_PRICE_CHANGES']:
+                                self.process_price_change(value)
+                            elif topic == settings.KAFKA_TOPICS['PRODUCT_CREATED']:
+                                self.process_product_created(value)
+                            elif topic == settings.KAFKA_TOPICS['PRODUCT_DELETED']:
+                                self.process_product_deleted(value)
+                            
+                        except Exception as e:
+                            self.stdout.write(self.style.ERROR(f'Error processing message: {str(e)}'))
+                            logger.error(f'Error processing message: {str(e)}', exc_info=True)
+                        
+                        time.sleep(0.1)
+                    
+            except KeyboardInterrupt:
+                self.stdout.write(self.style.WARNING('Stopping consumer due to keyboard interrupt'))
+                running = False
+            finally:
+                consumer.close()
+                self.stdout.write(self.style.SUCCESS(f'Consumer for topic {topic} closed'))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Error in process_topic: {str(e)}'))
+            logger.error(f'Error in process_topic: {str(e)}', exc_info=True)
 
     def process_inventory_update(self, message):
         try:
@@ -150,7 +182,6 @@ class Command(BaseCommand):
                 f'Low stock alert for product {product_id}: {current_stock} (threshold: {threshold})'
             ))
             
-
         except Exception as e:
             logger.error(f'Error processing low stock alert: {str(e)}', exc_info=True)
             raise
@@ -199,7 +230,6 @@ class Command(BaseCommand):
             
             self.stdout.write(f'Processed product creation: {product_id}')
             
-
         except Exception as e:
             logger.error(f'Error processing product creation: {str(e)}', exc_info=True)
             raise
@@ -211,7 +241,6 @@ class Command(BaseCommand):
             
             self.stdout.write(f'Processed product deletion: {product_id}')
             
-
         except Exception as e:
             logger.error(f'Error processing product deletion: {str(e)}', exc_info=True)
             raise
