@@ -174,7 +174,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Kafka Configuration
-KAFKA_BOOTSTRAP_SERVERS = ['localhost:9092']
+KAFKA_BOOTSTRAP_SERVERS = config('KAFKA_BOOTSTRAP_SERVERS', default='localhost:9092').split(',')
 KAFKA_TOPICS = {
     'INVENTORY_UPDATES': 'inventory-updates',
     'LOW_STOCK_ALERTS': 'low-stock-alerts',
