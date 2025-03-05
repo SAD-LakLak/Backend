@@ -73,6 +73,23 @@ services:
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
       - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
 
+  metabase:
+    image: docker.arvancloud.ir/metabase/metabase:latest
+    container_name: metabase_container
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: laklak_db
+      MB_DB_PORT: 5432
+      MB_DB_USER: postgres
+      MB_DB_PASS: 1162m
+      MB_DB_HOST: db
+    depends_on:
+      - db
+
+
 volumes:
   postgres_data:
   zookeeper_data:
