@@ -5,6 +5,10 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from rest_framework.routers import DefaultRouter
+
+router = DefaultRouter()
+router.register(r'package-reviews', views.PackageReviewViewSet)
 
 app_name = 'core'
 urlpatterns = [
@@ -30,4 +34,5 @@ urlpatterns = [
     path('addresses/<int:pk>/', views.AddressDetailView.as_view(), name='address-detail'),
     path('orders/create/', views.CreateCustomerOrderView.as_view(), name='create-order'),
     path('orders/history/', views.UserOrderHistoryView.as_view(), name='order-history'),
+    path('', include(router.urls)),
 ]

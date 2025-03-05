@@ -25,6 +25,10 @@ from core.filters import ProductFilter, PackageFilter
 from core.permissions import *
 from django.db.models import F, Sum, Case, When, Value, FloatField
 from django.http import Http404
+from rest_framework import viewsets, mixins
+from .models import PackageReview
+from .serializers import PackageReviewSerializer
+from .permissions import IsCustomer
 
 logger = logging.getLogger(__name__)
 
@@ -420,10 +424,33 @@ class PackageListAPIView(generics.ListAPIView):
         )
         return queryset
 
+class PackageReviewViewSet(mixins.CreateModelMixin,
+                          mixins.UpdateModelMixin,
+                          mixins.DestroyModelMixin,
+                          viewsets.GenericViewSet):
+
+    queryset = PackageReview.objects.all()
+    serializer_class = PackageReviewSerializer
+    permission_classes = [IsAuthenticated & IsCustomer]
+    
+    def get_queryset(self):
+        return PackageReview.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+    
+    def perform_update(self, serializer):
+        serializer.save()
+
 class PackageDetailAPIView(generics.RetrieveAPIView):
     queryset = Package.objects.all()
     serializer_class = PackageSerializer
     lookup_field = 'pk'
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
     
     def get(self, request, *args, **kwargs):
         try:
