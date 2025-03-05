@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Product, ProductImage, Package, PackageReview
+from .models import Product, ProductImage, Package
 
 
 @admin.register(Product)
@@ -14,10 +14,3 @@ class ProductImageAdmin(admin.ModelAdmin):
 @admin.register(Package)
 class PackageAdmin(admin.ModelAdmin):
     pass
-
-@admin.register(PackageReview)
-class PackageReviewAdmin(admin.ModelAdmin):
-    list_display = ('package', 'user', 'rating', 'created_at')
-    list_filter = ('rating', 'created_at')
-    search_fields = ('package__name', 'user__username', 'comment')
-    readonly_fields = ('created_at',)

@@ -3,7 +3,7 @@ from rest_framework import serializers
 from core import models
 from .models import Product, ProductImage, CustomUser, Package, Address
 import core.models
-from .models import PackageReview
+
 
 class CustomUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, min_length=8)
@@ -54,47 +54,23 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ['id', 'type', 'name', 'info', 'price', 'stock', 'is_active', 'product_images']
 
-class PackageReviewSerializer(serializers.ModelSerializer):
-    user_name = serializers.CharField(source='user.username', read_only=True)
-    
-    class Meta:
-        model = PackageReview
-        fields = ['id', 'package', 'user', 'user_name', 'rating', 'comment', 'created_at']
-        read_only_fields = ['user', 'created_at']
-
-
 class PackageSerializer(serializers.ModelSerializer):
     score = serializers.SerializerMethodField()
     stock = serializers.SerializerMethodField()
     products = serializers.SerializerMethodField()
-    reviews = PackageReviewSerializer(many=True, read_only=True)
-    user_review = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Package
         fields = [
             'id', 'name', 'summary', 'description',
             'total_price', 'image', 'products', 'is_active',
             'target_group', 'creation_date', 'score', 'stock',
-            'reviews', 'user_review', 'score_count'
         ]
-    
-    def get_user_review(self, obj):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            try:
-                review = PackageReview.objects.get(package=obj, user=request.user)
-                return PackageReviewSerializer(review).data
-            except PackageReview.DoesNotExist:
-                return None
-        return None
     
     def get_score(self, package):
         if package.score_count == 0:
-            return -1
-        
-        avg_score = package.score_sum / package.score_count
-        return round(avg_score, 2)
+            return "-1"
+        return f"{(package.score_sum / package.score_count) : .2f}"
     
     def get_stock(self, package):
         minstock_product = package.products.order_by("stock")[0]
