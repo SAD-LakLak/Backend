@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.conf import settings
 from datetime import timedelta
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class CustomUser(AbstractUser):
@@ -161,3 +162,43 @@ class OrderPackage(models.Model):
 
     def __str__(self):
         return f"{self.amount}x {self.package} in Order {self.order.id}"
+    
+
+class PackageReview(models.Model):
+    package = models.ForeignKey(Package, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='package_reviews')
+    rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    comment = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('package', 'user')
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Review by {self.user.username} for {self.package.name}: {self.rating}/5"
+    
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        
+        if not is_new:
+            old_instance = PackageReview.objects.get(pk=self.pk)
+            old_rating = old_instance.rating
+        
+        super().save(*args, **kwargs)
+        
+        if is_new:
+            self.package.score_sum += self.rating
+            self.package.score_count += 1
+        else:
+            self.package.score_sum = self.package.score_sum - old_rating + self.rating
+        
+        self.package.save()
+    
+    def delete(self, *args, **kwargs):
+        self.package.score_sum -= self.rating
+        self.package.score_count -= 1
+        self.package.save()
+        
+        super().delete(*args, **kwargs)
