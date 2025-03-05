@@ -420,6 +420,19 @@ class PackageListAPIView(generics.ListAPIView):
         )
         return queryset
 
+class PackageDetailAPIView(generics.RetrieveAPIView):
+    queryset = Package.objects.all()
+    serializer_class = PackageSerializer
+    lookup_field = 'pk'
+    
+    def get(self, request, *args, **kwargs):
+        try:
+            return self.retrieve(request, *args, **kwargs)
+        except Http404:
+            return Response(
+                {"detail": "Package not found."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 class AddressListView(APIView):
     permission_classes = [IsAuthenticated]
