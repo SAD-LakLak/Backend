@@ -15,6 +15,20 @@ jobs:
       
       - name: Set up Python Environment
         uses: actions/setup-python@v3
+
+      - name: Start PostgreSQL
+        run: |
+          sudo systemctl start postgresql.service
+          pg_isready
+          sudo -u postgres createuser -s -d -r -w runner
+      
+      - name: Load Env File
+        run: |
+          echo "DATABASE_NAME=postgresql
+          DATABASE_USER=postgres
+          DATABASE_PASSWORD=postgres
+          DATABASE_HOST=localhost
+          DATABASE_PORT=5432" > .env
       
       - name: Install Dependencies
         run: |
