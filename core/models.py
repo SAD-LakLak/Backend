@@ -115,11 +115,15 @@ class Address(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"{self.address_type} Address - {self.city}, {self.state}"
+    def save(self, *args, **kwargs):
+        if self.is_default:
+            # Unset previous default address for the same user
+            Address.objects.filter(user=self.user, is_default=True).exclude(id=self.id).update(is_default=False)
+        
+        super().save(*args, **kwargs)
 
-    class Meta:
-        unique_together = ('user', 'is_default')  # Only one default address of each type
+    def __str__(self):
+        return f"Address - {self.city}, {self.state}"
 
 
 
