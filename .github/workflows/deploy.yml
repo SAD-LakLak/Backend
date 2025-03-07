@@ -27,13 +27,13 @@ jobs:
 
       - name: Load Environment Variables
         run: |
-          cat <<EOF > .env
+          cat "
           DATABASE_NAME=postgresql
           DATABASE_USER=postgres
           DATABASE_PASSWORD=postgres
           DATABASE_HOST=localhost
-          DATABASE_PORT=5432
-          EOF
+          DATABASE_PORT=5432" > .env
+          
 
       - name: Install Dependencies
         run: |
