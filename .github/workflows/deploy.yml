@@ -27,7 +27,7 @@ jobs:
 
       - name: Load Environment Variables
         run: |
-          cat "
+          echo "
           DATABASE_NAME=postgresql
           DATABASE_USER=postgres
           DATABASE_PASSWORD=postgres
