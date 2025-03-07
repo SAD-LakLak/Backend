@@ -10,6 +10,21 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgresql
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -19,11 +34,13 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Start PostgreSQL
+      - name: Wait for PostgreSQL to be ready
         run: |
-          sudo systemctl start postgresql.service
-          pg_isready
-          sudo -u postgres createuser -s -d -r -w runner
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          echo "PostgreSQL is ready!"
 
       - name: Load Environment Variables
         run: |
@@ -33,7 +50,6 @@ jobs:
           DATABASE_PASSWORD=postgres
           DATABASE_HOST=localhost
           DATABASE_PORT=5432" > .env
-          
 
       - name: Install Dependencies
         run: |
