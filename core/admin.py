@@ -3,6 +3,9 @@ from .models import Product, ProductImage, Package, PackageReview
 from django.contrib.auth.admin import UserAdmin
 from .models import CustomUser
 
+admin.site.site_header = "LakLak Administration"
+admin.site.site_title = "LakLak Admin Panel"
+admin.site.index_title = "LakLak Administration"
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
