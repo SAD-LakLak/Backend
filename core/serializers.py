@@ -147,10 +147,14 @@ class CustomerOrderSerializer(serializers.ModelSerializer):
 class OrderPackageDetailSerializer(serializers.ModelSerializer):
     package_name = serializers.CharField(source="package.name", read_only=True)  # Assuming Package has a name field
     package_price = serializers.DecimalField(source="package.price", max_digits=10, decimal_places=2, read_only=True)  # Assuming Package has a price field
+    total_price = serializers.SerializerMethodField()
 
     class Meta:
         model = models.OrderPackage
-        fields = ['package', 'package_name', 'package_price', 'amount']
+        fields = ['package', 'package_name', 'package_price', 'amount', 'total_price']
+
+    def get_total_price(self, obj):
+        return obj.amount * obj.price
 
 class CustomerOrderHistorySerializer(serializers.ModelSerializer):
     packages = OrderPackageDetailSerializer(many=True, source='orderpackage_set')  # Retrieve related packages
