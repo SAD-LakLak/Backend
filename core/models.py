@@ -66,6 +66,9 @@ class Product(models.Model):
         blank=True,
     )
 
+    def __str__(self):
+        return f"{self.name} ({self.type}) - Stock: {self.stock}"
+
 
 class ProductImage(models.Model):
     image = models.ImageField(upload_to='product_images/')

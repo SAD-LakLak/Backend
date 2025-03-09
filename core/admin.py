@@ -9,7 +9,10 @@ admin.site.index_title = "LakLak Administration"
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    pass
+    list_display = ('name', 'type', 'provider', 'price', 'stock', 'is_active')
+    list_filter = ('type', 'is_active', 'provider')
+    search_fields = ('name', 'info', 'provider__username')
+    ordering = ('name',)
 
 
 @admin.register(ProductImage)
@@ -19,7 +22,11 @@ class ProductImageAdmin(admin.ModelAdmin):
 
 @admin.register(Package)
 class PackageAdmin(admin.ModelAdmin):
-    pass
+    list_display = ('name', 'target_group', 'total_price', 'is_active')
+    list_filter = ('target_group', 'is_active')
+    search_fields = ('name', 'description', 'summary')
+    filter_horizontal = ('products',)
+    readonly_fields = ('creation_date', 'last_modification')
 
 
 @admin.register(PackageReview)
