@@ -49,6 +49,7 @@ jobs:
           DATABASE_USER=postgres
           DATABASE_PASSWORD=postgres
           DATABASE_HOST=localhost
+          SECRET_KEY=&<qVTdQe=+@>fU-+bY!}*VU583-=--
           DATABASE_PORT=5432" > .env
 
       - name: Install Dependencies
