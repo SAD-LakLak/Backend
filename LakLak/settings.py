@@ -155,10 +155,11 @@ EMAIL_HOST_USER = 'hardcore_burnell_kddnae'
 EMAIL_HOST_PASSWORD = 'e94b2983-854f-41cc-a806-b13b78203025'
 EMAIL_USE_TLS = True
 EMAIL_FROM_ADDRESS = 'info@laklakbox.ir'
+EMAIL_DOMAIN_OF_LINK = "https://laklakbox.ir" # The reset link will begin with this domain
 EMAIL_RECOVERY_TEMPLATE = """\
 Dear {name},
 You are receiving this email because a password reset request was just initiated for your account.
-If this request was sent from you, head on to the below link to reset your password:
+If this request was sent from you, head on to the link below to reset your password:
 
 {reset_link}
 

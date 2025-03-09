@@ -76,7 +76,10 @@ def send_password_recovery_email(request):
         new_recovery_request = PasswordRecoveryRequest.objects.create(user=user, token=get_random_string(64))
         content = settings.EMAIL_RECOVERY_TEMPLATE.format(
             name=user.username,
-            reset_link=reverse('core:reset_with_token', args=(new_recovery_request.token,))
+            reset_link=settings.EMAIL_DOMAIN_OF_LINK + reverse(
+                'core:reset_with_token',
+                args=(new_recovery_request.token,),
+            ),
         )
         send_mail('LakLak: Password Reset Request',
                   content,
