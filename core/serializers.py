@@ -10,7 +10,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'first_name', 'last_name', 'password', 'role', 'national_code', 'birth_date', 'phone_number']
+        fields = ['username', 'email', 'first_name', 'last_name', 'password', 'role', 
+                 'national_code', 'birth_date', 'phone_number', 'avatar_url']
 
     def create(self, validated_data):
         user = CustomUser.objects.create_user(
@@ -22,7 +23,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
             role=validated_data.get('role', 'customer'),
             national_code=validated_data.get('national_code', ''),
             birth_date=validated_data.get('birth_date', None),
-            phone_number=validated_data.get('phone_number', '')
+            phone_number=validated_data.get('phone_number', ''),
+            avatar_url=validated_data.get('avatar_url', None)
         )
         return user
 

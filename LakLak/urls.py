@@ -31,6 +31,8 @@ urlpatterns += [
     path('api/', include('core.urls')),
     path('api/ticketing/', include('ticketing.urls')),
     path('api/inventory/', include('inventory.urls')),
+    
+    path('auth/', include('social_django.urls', namespace='social')),
 ]
 
 if settings.DEBUG:

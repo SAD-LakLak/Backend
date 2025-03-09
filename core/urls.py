@@ -19,6 +19,13 @@ urlpatterns = [
     path('reset_password/', views.send_password_recovery_email, name='send_password_email'),
     path('reset_password/<str:token>', views.reset_password_based_on_token, name='reset_with_token'),
     path('logout/', views.LogoutAPIView.as_view(), name='logout'),
+    
+    path('google/login/', views.GoogleLoginView.as_view(), name='google_login'),
+    path('oauth/complete/<backend>/', views.oauth_complete, name='oauth_complete'),
+    path('google/callback/', views.GoogleLoginCallbackView.as_view(), name='google_callback'),
+    
+    path('', include(router.urls)),
+    
     path('products/register/', views.register_new_product, name='product-register'),
     path('products/update/bulk/granular/', views.granular_bulk_stock_change, name='granular-bulk-change'),
     path('products/update/bulk/', views.bulk_stock_change, name='bulk-update'),
@@ -34,5 +41,4 @@ urlpatterns = [
     path('addresses/<int:pk>/', views.AddressDetailView.as_view(), name='address-detail'),
     path('orders/create/', views.CreateCustomerOrderView.as_view(), name='create-order'),
     path('orders/history/', views.UserOrderHistoryView.as_view(), name='order-history'),
-    path('', include(router.urls)),
 ]

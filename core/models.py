@@ -19,6 +19,10 @@ class CustomUser(AbstractUser):
     national_code = models.CharField(max_length=20, blank=True)
     birth_date = models.DateTimeField(blank=True, null=True)
     phone_number = models.CharField(max_length=20, blank=True)
+    avatar_url = models.URLField(max_length=500, blank=True, null=True)  # Add avatar URL field
+
+    def get_avatar(self):
+        return self.avatar_url if self.avatar_url else None
 
 
 class PasswordRecoveryRequest(models.Model):

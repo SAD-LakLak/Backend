@@ -3,7 +3,7 @@ import logging
 from json import loads as parse_json
 from django.contrib.auth import get_user_model, logout
 from django.core.mail import send_mail
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect, render
 from django.conf import settings
 from django.utils.crypto import get_random_string
 from django.urls import reverse
@@ -24,11 +24,14 @@ from core.pagination import ProductPagination
 from core.filters import ProductFilter, PackageFilter
 from core.permissions import *
 from django.db.models import F, Sum, Case, When, Value, FloatField
-from django.http import Http404
+from django.http import Http404, HttpResponseRedirect
 from rest_framework import viewsets, mixins
 from .models import PackageReview
 from .serializers import PackageReviewSerializer
 from .permissions import IsCustomer
+from social_django.utils import psa
+from rest_framework_simplejwt.tokens import RefreshToken
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -325,7 +328,7 @@ def bulk_stock_change(request):
         return Response({"success" : "true"})
     except Exception as e:
         logger.error(f"Error in bulk_stock_change: {str(e)}")
-        return failure_response('server error', status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return failure_response('server error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
 @api_view(['POST'])
@@ -383,7 +386,7 @@ def granular_bulk_stock_change(request):
         return Response({"success" : "true"})
     except Exception as e:
         logger.error(f"Error in granular_bulk_stock_change: {str(e)}")
-        return failure_response('server error', status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return failure_response('server error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     
 
@@ -521,3 +524,128 @@ class UserOrderHistoryView(generics.ListAPIView):
 
     def get_queryset(self):
         return models.CustomerOrder.objects.filter(user=self.request.user).order_by('-order_date')
+
+# New OAuth related views
+class GoogleLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+
+        next_url = request.query_params.get('next', settings.SOCIAL_AUTH_LOGIN_REDIRECT_URL)
+        auth_url = f"{request.build_absolute_uri('/')[:-1]}/auth/login/google-oauth2/?next={next_url}"
+        return Response({'auth_url': auth_url}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+@psa('social:complete')
+def oauth_complete(request, backend, *args, **kwargs):
+
+    try:
+        redirect_uri = request.GET.get('next') or request.session.get('redirect_uri') or settings.SOCIAL_AUTH_LOGIN_REDIRECT_URL
+        
+        user = request.backend.do_auth(request.GET.get('code'))
+        
+        if not user:
+            return Response({'error': 'Failed to authenticate user'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+        
+        if 'api' in request.GET.get('next', ''):
+            return Response({
+                'access': access_token,
+                'refresh': refresh_token,
+                'user': CustomUserSerializer(user).data
+            }, status=status.HTTP_200_OK)
+        else:
+            success_url = reverse('core:oauth_success')
+            redirect_url = f"{success_url}?access_token={access_token}&refresh_token={refresh_token}&redirect_to={redirect_uri}"
+            return HttpResponseRedirect(redirect_url)
+            
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GoogleLoginCallbackView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+
+        code = request.query_params.get('code')
+        if not code:
+            return Response({'error': 'Authorization code is missing'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            token_url = "https://oauth2.googleapis.com/token"
+            data = {
+                'code': code,
+                'client_id': settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY,
+                'client_secret': settings.SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET,
+                'redirect_uri': request.build_absolute_uri('/complete/google-oauth2/'),
+                'grant_type': 'authorization_code',
+            }
+            
+            response = requests.post(token_url, data=data)
+            token_data = response.json()
+            
+            user_info_url = "https://www.googleapis.com/oauth2/v3/userinfo"
+            headers = {'Authorization': f"Bearer {token_data.get('access_token')}"}
+            user_info_response = requests.get(user_info_url, headers=headers)
+            user_info = user_info_response.json()
+            
+            try:
+                user = CustomUser.objects.get(email=user_info.get('email'))
+                created = False
+            except CustomUser.DoesNotExist:
+                username = user_info.get('email').split('@')[0]
+                base_username = username
+                counter = 1
+                while CustomUser.objects.filter(username=username).exists():
+                    username = f"{base_username}{counter}"
+                    counter += 1
+
+
+                user = CustomUser.objects.create_user(
+                    username=username,
+                    email=user_info.get('email'),
+                    password=get_random_string(32),
+                    first_name=user_info.get('given_name', ''),
+                    last_name=user_info.get('family_name', ''),
+                    role='customer',
+                    avatar_url=user_info.get('picture', '')
+                )
+                created = True
+            
+            if not created:
+                update_fields = []
+                if not user.first_name and user_info.get('given_name'):
+                    user.first_name = user_info.get('given_name')
+                    update_fields.append('first_name')
+                if not user.last_name and user_info.get('family_name'):
+                    user.last_name = user_info.get('family_name')
+                    update_fields.append('last_name')
+                if not user.avatar_url and user_info.get('picture'):
+                    user.avatar_url = user_info.get('picture')
+                    update_fields.append('avatar_url')
+                if update_fields:
+                    user.save(update_fields=update_fields)
+            
+            refresh = RefreshToken.for_user(user)
+            token_data = {
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'user': CustomUserSerializer(user).data,
+                'is_new_user': created
+            }
+            
+            redirect_to = request.query_params.get('redirect_to')
+            if redirect_to and redirect_to in settings.SOCIAL_AUTH_ALLOWED_REDIRECT_HOSTS:
+                redirect_url = f"{redirect_to}?access_token={token_data['access']}&refresh_token={token_data['refresh']}"
+                return HttpResponseRedirect(redirect_url)
+                
+            return Response(token_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
