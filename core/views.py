@@ -1,4 +1,3 @@
-import json
 import logging
 from json import loads as parse_json
 from django.contrib.auth import get_user_model, logout
@@ -18,15 +17,23 @@ from django_filters.rest_framework import DjangoFilterBackend
 from core.serializers import ProductSerializer
 from core import serializers
 from core import models
-from core.models import Product, ProductImage, PasswordRecoveryRequest, CustomUser, Package, Address
+from core.models import (
+    Product,
+    ProductImage,
+    PasswordRecoveryRequest,
+    CustomUser,
+    Package,
+    Address,
+    PackageReview,
+    UserFile,
+)
 from .serializers import CustomUserSerializer, PackageSerializer, AddressSerializer, CustomTokenObtainPairSerializer
 from core.pagination import ProductPagination
 from core.filters import ProductFilter, PackageFilter
 from core.permissions import *
-from django.db.models import F, Sum, Case, When, Value, FloatField
-from django.http import Http404, HttpResponseRedirect
+from django.db.models import F, Case, When, Value, FloatField
+from django.http import Http404, HttpResponseRedirect, FileResponse
 from rest_framework import viewsets, mixins
-from .models import PackageReview
 from .serializers import PackageReviewSerializer
 from .permissions import IsCustomer
 from social_django.utils import psa
@@ -649,3 +656,32 @@ class GoogleLoginCallbackView(APIView):
             
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([IsSupplier])
+def upload_user_file(request):
+    if request.FILES and request.FILES.get('file', False) and request.POST.get('tag', False):
+        try:
+            uploaded_file = request.FILES['file']
+            tag = request.POST['tag']
+            if tag == "":
+                return failure_response("empty tag", status=status.HTTP_400_BAD_REQUEST)
+            UserFile.objects.create(file=uploaded_file, user=request.user, tag=tag)
+            return Response({"success" : "true"})
+        except Exception as e:
+            return failure_response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        return failure_response('no file provided')
+
+@api_view(['GET'])
+@permission_classes([IsSupplier])
+def get_user_file(request, tag):
+    try:
+        user_file = UserFile.objects.get(user=request.user, tag=tag)
+    except:
+        return failure_response(f"user has no file with tag {tag}", status=status.HTTP_400_BAD_REQUEST)
+    
+    response = FileResponse(user_file.file.open())
+    response['Content-Type'] = 'application/pdf'
+    response['Content-Disposition'] = f'attachment;filename="{user_file.user.username}_{user_file.tag}"'
+    return response

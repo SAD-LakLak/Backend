@@ -34,11 +34,18 @@ urlpatterns = [
     path('products/delete/images/<int:image_id>', views.delete_product_image, name='image-delete'),
     path('products/delete/<int:product_id>/', views.delete_product, name='product-delete'),
     path('products/', views.ProductListAPIView.as_view(), name='product-list'),
+
     path('packages/', views.PackageListAPIView.as_view(), name='package-list'),
     path('packages/<int:pk>/', views.PackageDetailAPIView.as_view(), name='package-detail'),
+
     path('', include('ticketing.urls')),
+
     path('addresses/', views.AddressListView.as_view(), name='address-list'),
     path('addresses/<int:pk>/', views.AddressDetailView.as_view(), name='address-detail'),
+
     path('orders/create/', views.CreateCustomerOrderView.as_view(), name='create-order'),
     path('orders/history/', views.UserOrderHistoryView.as_view(), name='order-history'),
+
+    path('file/upload/', views.upload_user_file, name='upload-file'),
+    path('file/download/<str:tag>/', views.get_user_file, name='download-file'),
 ]

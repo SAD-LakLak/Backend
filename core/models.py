@@ -74,6 +74,11 @@ class ProductImage(models.Model):
     image = models.ImageField(upload_to='product_images/')
     product = models.ForeignKey(Product, related_name='product_images', on_delete=models.CASCADE)
 
+class UserFile(models.Model):
+    user = models.ForeignKey(CustomUser, related_name='user_files', on_delete=models.CASCADE)
+    file = models.FileField(upload_to='user_files/')
+    tag = models.CharField(max_length=255, null=False, blank=False)
+
 
 class Package(models.Model):
     AGE_GROUPS = (
