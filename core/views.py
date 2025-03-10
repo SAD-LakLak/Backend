@@ -532,16 +532,19 @@ class UserOrderHistoryView(generics.ListAPIView):
     def get_queryset(self):
         return models.CustomerOrder.objects.filter(user=self.request.user).order_by('-order_date')
 
-# New OAuth related views
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-
-        next_url = request.query_params.get('next', settings.SOCIAL_AUTH_LOGIN_REDIRECT_URL)
-        auth_url = f"{request.build_absolute_uri('/')[:-1]}/auth/login/google-oauth2/?next={next_url}"
+        frontend_url = 'https://laklakbox.ir' 
+        callback_url = f"{frontend_url}/auth/google/callback"
+        
+        auth_url = (
+            f"{request.build_absolute_uri('/')[:-1]}"
+            f"/auth/login/google-oauth2/"
+            f"?next={callback_url}"
+        )
         return Response({'auth_url': auth_url}, status=status.HTTP_200_OK)
-
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
