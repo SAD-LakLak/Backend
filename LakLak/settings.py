@@ -36,6 +36,19 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.laklakbox.ir',  
     'https://laklakbox.ir',  
 ]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://laklakbox.ir",
+    'https://api.laklakbox.ir',
+    'https://*.laklakbox.ir',
+]
+
+SOCIAL_AUTH_ALLOWED_REDIRECT_HOSTS = [
+    'localhost:3000',
+    'laklakbox.ir',
+    'https://laklakbox.ir',
+    'https://*.laklakbox.ir',
+]
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '5.34.203.201','213.233.184.204','api.laklakbox.ir','*.laklakbox.ir']
 AUTH_USER_MODEL = 'core.CustomUser'
 
