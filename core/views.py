@@ -71,6 +71,8 @@ def failure_response(message, status=status.HTTP_400_BAD_REQUEST):
     return Response({"success" : "false", "message" : message}, status=status)
 
 @api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
 def send_password_recovery_email(request):
     try:
         email_address = parse_json(request.body)['email']
@@ -107,6 +109,8 @@ def send_password_recovery_email(request):
 
 
 @api_view(['GET', 'POST'])
+@authentication_classes([])
+@permission_classes([])
 def reset_password_based_on_token(request, token):
     try:
         reset_request = PasswordRecoveryRequest.objects.get(token=token)
