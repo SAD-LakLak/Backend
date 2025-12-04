@@ -9,7 +9,7 @@ from django.urls import reverse
 from rest_framework.permissions import AllowAny
 from rest_framework import generics, status, filters
 from rest_framework.response import Response
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.views import APIView
 from rest_framework import filters, serializers
 from rest_framework.permissions import IsAuthenticated
@@ -47,17 +47,21 @@ try:
         send_inventory_update, send_price_change_event,
         send_product_created_event, send_product_deleted_event
     )
+
     KAFKA_AVAILABLE = True
 except ImportError:
     KAFKA_AVAILABLE = False
+
 
 class RegistrationView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
     permission_classes = [AllowAny]  # Allow anyone to access this endpoint
 
+
 class GetUserByTokenView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request):
         user = request.user
         try:
@@ -68,7 +72,8 @@ class GetUserByTokenView(APIView):
 
 
 def failure_response(message, status=status.HTTP_400_BAD_REQUEST):
-    return Response({"success" : "false", "message" : message}, status=status)
+    return Response({"success": "false", "message": message}, status=status)
+
 
 @api_view(['POST'])
 @authentication_classes([])
@@ -78,7 +83,7 @@ def send_password_recovery_email(request):
         email_address = parse_json(request.body)['email']
     except:
         return failure_response("No email provided")
-    
+
     user = get_object_or_404(CustomUser, email=email_address)
 
     # Delete any remained reset requests for this user from past, if any
@@ -98,14 +103,14 @@ def send_password_recovery_email(request):
                   settings.EMAIL_FROM_ADDRESS,
                   [email_address],
                   fail_silently=False,
-        )
+                  )
     except Exception as e:
         return failure_response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response(
-        {"success" : "true"},
-          status=status.HTTP_200_OK
-          )
+        {"success": "true"},
+        status=status.HTTP_200_OK
+    )
 
 
 @api_view(['GET', 'POST'])
@@ -118,9 +123,9 @@ def reset_password_based_on_token(request, token):
             reset_request.delete()
             raise Exception("Expired Token")
     except:
-        return Response({"tokenValidity" : "false"})
+        return Response({"tokenValidity": "false"})
     if request.method == 'GET':
-        return Response({"tokenValidity" : "true", "resetToken" : reset_request.token})
+        return Response({"tokenValidity": "true", "resetToken": reset_request.token})
     elif request.method == 'POST':
         try:
             new_password = parse_json(request.body)['new_password']
@@ -132,7 +137,7 @@ def reset_password_based_on_token(request, token):
             user.set_password(new_password)
             user.save()
             reset_request.delete()
-            return Response({"success" : "true"})
+            return Response({"success": "true"})
         except:
             return failure_response("server error", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -152,12 +157,12 @@ def register_new_product(request):
         provider = request.user
     except Exception as e:
         return failure_response(str(e))
-    
+
     try:
         new_product = Product.objects.create(
             type=type, name=name, info=info, is_active=True, price=price, stock=stock, provider=provider
         )
-        
+
         if KAFKA_AVAILABLE:
             try:
                 product_data = {
@@ -170,10 +175,11 @@ def register_new_product(request):
                 send_product_created_event(new_product.id, product_data, request.user.id)
             except Exception as e:
                 logger.error(f"Failed to send product created event: {str(e)}")
-        
-        return Response({"success" : "true", "id" : new_product.id})
+
+        return Response({"success": "true", "id": new_product.id})
     except Exception as e:
         return failure_response("server error: " + str(e))
+
 
 @api_view(['POST'])
 @permission_classes([IsSupplier])
@@ -185,10 +191,10 @@ def update_product(request):
     if data.get('id', None) is None:
         return failure_response("id not provided")
     product = get_object_or_404(Product, pk=data['id'])
-    
+
     old_price = product.price
     old_stock = product.stock
-    
+
     for field, new_value in data.items():
         if field == 'id':
             continue
@@ -228,18 +234,18 @@ def update_product(request):
             return failure_response('unsupported field for change: ' + field)
     try:
         product.save()
-        
+
         if KAFKA_AVAILABLE:
             try:
                 if old_price != product.price:
                     send_price_change_event(product.id, old_price, product.price, request.user.id)
-                
+
                 if old_stock != product.stock:
                     send_inventory_update(product.id, old_stock, product.stock, request.user.id)
             except Exception as e:
                 logger.error(f"Failed to send product update events: {str(e)}")
-        
-        return Response({"success" : "true"})
+
+        return Response({"success": "true"})
     except:
         return failure_response("server error", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -252,11 +258,12 @@ def upload_product_image(request):
             product = get_object_or_404(Product, pk=request.POST['id'])
             uploaded_image = request.FILES['image']
             ProductImage.objects.create(image=uploaded_image, product=product)
-            return Response({"success" : "true"})
+            return Response({"success": "true"})
         except Exception as e:
             return failure_response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         return failure_response('no image provided')
+
 
 @api_view(['DELETE'])
 @permission_classes([IsSupplier])
@@ -267,9 +274,10 @@ def delete_product_image(request, image_id):
         if (provider != request.user):
             return failure_response("you do not own that product")
         image.delete()
-        return Response({"success" : "true"})
+        return Response({"success": "true"})
     except:
         return failure_response('server error', status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @api_view(['DELETE'])
 @permission_classes([IsSupplier])
@@ -291,12 +299,13 @@ def delete_product(request, product_id):
                 send_product_deleted_event(product_id, product_data, request.user.id)
             except Exception as e:
                 logger.error(f"Failed to send product deleted event: {str(e)}")
-        
+
         product.is_deleted = True
         product.save()
-        return Response({"success" : "true"})
+        return Response({"success": "true"})
     except:
         return failure_response('server error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @api_view(['POST'])
 @permission_classes([IsSupplier])
@@ -310,37 +319,37 @@ def bulk_stock_change(request):
         products_before = None
         if KAFKA_AVAILABLE:
             products_before = list(Product.objects.filter(provider_id=provider_id).values('id', 'stock'))
-        
+
         if delta > 0:
-            Product.objects.filter(provider_id=provider_id).update(stock=F("stock")+delta)
+            Product.objects.filter(provider_id=provider_id).update(stock=F("stock") + delta)
         else:
-            Product.objects\
-                .filter(provider_id=provider_id, stock__gt=-delta)\
-                .update(stock=F("stock")+delta)
-            Product.objects\
-                .filter(provider_id=provider_id, stock__lte=-delta)\
+            Product.objects \
+                .filter(provider_id=provider_id, stock__gt=-delta) \
+                .update(stock=F("stock") + delta)
+            Product.objects \
+                .filter(provider_id=provider_id, stock__lte=-delta) \
                 .update(stock=0)
-        
+
         if KAFKA_AVAILABLE and products_before:
             products_after = list(Product.objects.filter(provider_id=provider_id).values('id', 'stock'))
             products_after_dict = {p['id']: p['stock'] for p in products_after}
-            
+
             for product in products_before:
                 product_id = product['id']
                 old_stock = product['stock']
                 new_stock = products_after_dict.get(product_id)
-                
+
                 if old_stock != new_stock:
                     try:
                         send_inventory_update(product_id, old_stock, new_stock, provider_id.id)
                     except Exception as e:
                         logger.error(f"Failed to send inventory update for product {product_id}: {str(e)}")
-        
-        return Response({"success" : "true"})
+
+        return Response({"success": "true"})
     except Exception as e:
         logger.error(f"Error in bulk_stock_change: {str(e)}")
         return failure_response('server error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
 
 @api_view(['POST'])
 @permission_classes([IsSupplier])
@@ -366,45 +375,45 @@ def granular_bulk_stock_change(request):
         products_before = None
         if KAFKA_AVAILABLE:
             products_before = list(Product.objects.filter(pk__in=product_ids, provider=provider).values('id', 'stock'))
-        
+
         if (delta > 0):
-            Product.objects\
-                .filter(pk__in=product_ids, provider=provider)\
-                .update(stock=F("stock")+delta)
+            Product.objects \
+                .filter(pk__in=product_ids, provider=provider) \
+                .update(stock=F("stock") + delta)
         if (delta < 0):
-            Product.objects\
-                .filter(pk__in=product_ids, provider=provider, stock__gt=-delta)\
-                .update(stock=F("stock")+delta)
-            Product.objects\
-            .filter(pk__in=product_ids, provider=provider, stock__lte=-delta)\
-            .update(stock=0)
-        
+            Product.objects \
+                .filter(pk__in=product_ids, provider=provider, stock__gt=-delta) \
+                .update(stock=F("stock") + delta)
+            Product.objects \
+                .filter(pk__in=product_ids, provider=provider, stock__lte=-delta) \
+                .update(stock=0)
+
         if KAFKA_AVAILABLE and products_before:
             products_after = list(Product.objects.filter(pk__in=product_ids, provider=provider).values('id', 'stock'))
             products_after_dict = {p['id']: p['stock'] for p in products_after}
-            
+
             for product in products_before:
                 product_id = product['id']
                 old_stock = product['stock']
                 new_stock = products_after_dict.get(product_id)
-                
+
                 if old_stock != new_stock:
                     try:
                         send_inventory_update(product_id, old_stock, new_stock, provider.id)
                     except Exception as e:
                         logger.error(f"Failed to send inventory update for product {product_id}: {str(e)}")
-        
-        return Response({"success" : "true"})
+
+        return Response({"success": "true"})
     except Exception as e:
         logger.error(f"Error in granular_bulk_stock_change: {str(e)}")
         return failure_response('server error', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    
+
 
 class LogoutAPIView(APIView):
     def post(self, request):
         logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class ProductListAPIView(generics.ListAPIView):
     serializer_class = ProductSerializer
@@ -422,6 +431,7 @@ class ProductListAPIView(generics.ListAPIView):
             raise serializers.ValidationError("This provider does not have any products.")
         return queryset
 
+
 class PackageListAPIView(generics.ListAPIView):
     serializer_class = PackageSerializer
     pagination_class = ProductPagination
@@ -429,7 +439,7 @@ class PackageListAPIView(generics.ListAPIView):
     filterset_class = PackageFilter
     search_fields = ['name', 'products__name']
     ordering_fields = ['name', 'id', 'total_price', 'creation_date', 'score_sum']
-    
+
     def get_queryset(self):
         queryset = Package.objects.all()
         queryset = queryset.annotate(
@@ -441,42 +451,44 @@ class PackageListAPIView(generics.ListAPIView):
         )
         return queryset
 
-class PackageReviewViewSet(mixins.CreateModelMixin,
-                          mixins.UpdateModelMixin,
-                          mixins.DestroyModelMixin,
-                          viewsets.GenericViewSet):
 
+class PackageReviewViewSet(mixins.CreateModelMixin,
+                           mixins.UpdateModelMixin,
+                           mixins.DestroyModelMixin,
+                           viewsets.GenericViewSet):
     queryset = PackageReview.objects.all()
     serializer_class = PackageReviewSerializer
     permission_classes = [IsAuthenticated & IsCustomer]
-    
+
     def get_queryset(self):
         return PackageReview.objects.filter(user=self.request.user)
-    
+
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
-    
+
     def perform_update(self, serializer):
         serializer.save()
+
 
 class PackageDetailAPIView(generics.RetrieveAPIView):
     queryset = Package.objects.all()
     serializer_class = PackageSerializer
     lookup_field = 'pk'
-    
+
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
-    
+
     def get(self, request, *args, **kwargs):
         try:
             return self.retrieve(request, *args, **kwargs)
         except Http404:
             return Response(
-                {"detail": "Package not found."}, 
+                {"detail": "Package not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
+
 
 class AddressListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -501,7 +513,7 @@ class AddressDetailView(APIView):
         try:
             return Address.objects.get(pk=pk, user=self.request.user)  # Ensure address belongs to the user
         except Address.DoesNotExist:
-            raise Http404  
+            raise Http404
 
     def get(self, request, pk):
         address = self.get_object(pk)
@@ -521,6 +533,7 @@ class AddressDetailView(APIView):
         address.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 class CreateCustomerOrderView(generics.CreateAPIView):
     serializer_class = serializers.CustomerOrderSerializer
     permission_classes = [IsAuthenticated]
@@ -536,13 +549,14 @@ class UserOrderHistoryView(generics.ListAPIView):
     def get_queryset(self):
         return models.CustomerOrder.objects.filter(user=self.request.user).order_by('-order_date')
 
+
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        frontend_url = 'https://laklakbox.ir' 
+        frontend_url = 'https://laklakbox.ir'
         callback_url = f"{frontend_url}/auth/google/callback"
-        
+
         auth_url = (
             f"{request.build_absolute_uri('/')[:-1]}"
             f"/auth/login/google-oauth2/"
@@ -550,23 +564,24 @@ class GoogleLoginView(APIView):
         )
         return Response({'auth_url': auth_url}, status=status.HTTP_200_OK)
 
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 @psa('social:complete')
 def oauth_complete(request, backend, *args, **kwargs):
-
     try:
-        redirect_uri = request.GET.get('next') or request.session.get('redirect_uri') or settings.SOCIAL_AUTH_LOGIN_REDIRECT_URL
-        
+        redirect_uri = request.GET.get('next') or request.session.get(
+            'redirect_uri') or settings.SOCIAL_AUTH_LOGIN_REDIRECT_URL
+
         user = request.backend.do_auth(request.GET.get('code'))
-        
+
         if not user:
             return Response({'error': 'Failed to authenticate user'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
-        
+
         if 'api' in request.GET.get('next', ''):
             return Response({
                 'access': access_token,
@@ -577,7 +592,7 @@ def oauth_complete(request, backend, *args, **kwargs):
             success_url = reverse('core:oauth_success')
             redirect_url = f"{success_url}?access_token={access_token}&refresh_token={refresh_token}&redirect_to={redirect_uri}"
             return HttpResponseRedirect(redirect_url)
-            
+
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -590,7 +605,7 @@ class GoogleLoginCallbackView(APIView):
         code = request.query_params.get('code')
         if not code:
             return Response({'error': 'Authorization code is missing'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
         try:
             token_url = "https://oauth2.googleapis.com/token"
             data = {
@@ -600,15 +615,15 @@ class GoogleLoginCallbackView(APIView):
                 'redirect_uri': request.build_absolute_uri('/complete/google-oauth2/'),
                 'grant_type': 'authorization_code',
             }
-            
+
             response = requests.post(token_url, data=data)
             token_data = response.json()
-            
+
             user_info_url = "https://www.googleapis.com/oauth2/v3/userinfo"
             headers = {'Authorization': f"Bearer {token_data.get('access_token')}"}
             user_info_response = requests.get(user_info_url, headers=headers)
             user_info = user_info_response.json()
-            
+
             try:
                 user = CustomUser.objects.get(email=user_info.get('email'))
                 created = False
@@ -620,7 +635,6 @@ class GoogleLoginCallbackView(APIView):
                     username = f"{base_username}{counter}"
                     counter += 1
 
-
                 user = CustomUser.objects.create_user(
                     username=username,
                     email=user_info.get('email'),
@@ -631,7 +645,7 @@ class GoogleLoginCallbackView(APIView):
                     avatar_url=user_info.get('picture', '')
                 )
                 created = True
-            
+
             if not created:
                 update_fields = []
                 if not user.first_name and user_info.get('given_name'):
@@ -645,7 +659,7 @@ class GoogleLoginCallbackView(APIView):
                     update_fields.append('avatar_url')
                 if update_fields:
                     user.save(update_fields=update_fields)
-            
+
             refresh = RefreshToken.for_user(user)
             token_data = {
                 'access': str(refresh.access_token),
@@ -653,16 +667,17 @@ class GoogleLoginCallbackView(APIView):
                 'user': CustomUserSerializer(user).data,
                 'is_new_user': created
             }
-            
+
             redirect_to = request.query_params.get('redirect_to')
             if redirect_to and redirect_to in settings.SOCIAL_AUTH_ALLOWED_REDIRECT_HOSTS:
                 redirect_url = f"{redirect_to}?access_token={token_data['access']}&refresh_token={token_data['refresh']}"
                 return HttpResponseRedirect(redirect_url)
-                
+
             return Response(token_data, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['POST'])
 @permission_classes([IsSupplier])
@@ -674,11 +689,12 @@ def upload_user_file(request):
             if tag == "":
                 return failure_response("empty tag", status=status.HTTP_400_BAD_REQUEST)
             UserFile.objects.create(file=uploaded_file, user=request.user, tag=tag)
-            return Response({"success" : "true"})
+            return Response({"success": "true"})
         except Exception as e:
             return failure_response(str(e), status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         return failure_response('no file provided')
+
 
 @api_view(['GET'])
 @permission_classes([IsSupplier])
@@ -687,7 +703,7 @@ def get_user_file(request, tag):
         user_file = UserFile.objects.get(user=request.user, tag=tag)
     except:
         return failure_response(f"user has no file with tag {tag}", status=status.HTTP_400_BAD_REQUEST)
-    
+
     response = FileResponse(user_file.file.open())
     response['Content-Type'] = 'application/pdf'
     response['Content-Disposition'] = f'attachment;filename="{user_file.user.username}_{user_file.tag}"'
